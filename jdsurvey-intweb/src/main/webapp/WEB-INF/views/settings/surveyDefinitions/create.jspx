@@ -136,8 +136,7 @@
 
 
     <div class="right-column">	
-		<div class="block">
- 		 hello two<form:create id="fc_com.jd.survey.domain.settings.SurveyDefinition" modelAttribute="surveyDefinition" path="/settings/surveyDefinitions" render="${empty dependencies}" >
+		<div class="block"><form:create id="fc_com.jd.survey.domain.settings.SurveyDefinition" modelAttribute="surveyDefinition" path="/settings/surveyDefinitions" render="${empty dependencies}" >
 					<c:if test="${!empty surveyDefinition.department}">
 					<field:hidden path="department.id"/>
 					<field:link  field="department.name" id="c_com.jd.survey.domain.settings.Department"  path="/security/departments/${surveyDefinition.department.id}" object="${surveyDefinition}" cssclass="grid-8-12"/>
