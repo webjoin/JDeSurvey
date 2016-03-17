@@ -68,7 +68,7 @@ xsi:schemaLocation="http://www.springframework.org/schema/beans
 	<!-- <bean class="org.springframework.web.servlet.i18n.CookieLocaleResolver" id="localeResolver" p:cookieName="JDlocale" p:defaultLocale=" fr_FR" /> -->  
 
     <!-- <bean class="org.springframework.web.servlet.i18n.CookieLocaleResolver" id="localeResolver" p:cookieName="JDlocale" p:defaultLocale="ar"  /> -->
-    <bean class="org.springframework.web.servlet.i18n.CookieLocaleResolver" id="localeResolver" p:cookieName="JDlocale" p:defaultLocale="en_US"  />
+    <bean class="org.springframework.web.servlet.i18n.CookieLocaleResolver" id="localeResolver" p:cookieName="JDlocale" p:defaultLocale="zh_CN"  />
     <!--<bean class="org.springframework.web.servlet.i18n.CookieLocaleResolver" id="localeResolver" p:cookieName="JDlocale" p:defaultLocale="es_ES"  />-->
     <!--<bean class="org.springframework.web.servlet.i18n.CookieLocaleResolver" id="localeResolver" p:cookieName="JDlocale" p:defaultLocale="pt_PT"  />-->
     <!-- <bean class="org.springframework.web.servlet.i18n.CookieLocaleResolver" id="localeResolver" p:cookieName="JDlocale" p:defaultLocale=" fr_FR" /> -->  

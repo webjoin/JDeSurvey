@@ -262,7 +262,7 @@ public class PublicSurveyController {
 				return "accessDenied";
 			}
 
-			if (!survey.getIpAddress().equalsIgnoreCase(httpServletRequest.getLocalAddr())) {
+			if (!survey.getIpAddress().equalsIgnoreCase(httpServletRequest.getRemoteAddr())) {
 				//Attempt to access a survey from different IP Address 
 				log.warn(UNAUTHORIZED_ATTEMPT_TO_ACCESS_SURVEY_WARNING_MESSAGE + httpServletRequest.getPathInfo() + FROM_IP_WARNING_MESSAGE + httpServletRequest.getLocalAddr());
 				return "accessDenied";
@@ -312,7 +312,7 @@ public class PublicSurveyController {
 				}
 				
 				//Attempt to access a survey from different IP Address
-				if (!survey.getIpAddress().equalsIgnoreCase(httpServletRequest.getLocalAddr())) {
+				if (!survey.getIpAddress().equalsIgnoreCase(httpServletRequest.getRemoteAddr())) {
 					log.warn(UNAUTHORIZED_ATTEMPT_TO_ACCESS_SURVEY_WARNING_MESSAGE + httpServletRequest.getPathInfo() + FROM_IP_WARNING_MESSAGE + httpServletRequest.getLocalAddr());
 					return "accessDenied";
 				}
@@ -344,7 +344,7 @@ public class PublicSurveyController {
 				}
 				
 				//Attempt to access a survey from different IP Address
-				if (!survey.getIpAddress().equalsIgnoreCase(httpServletRequest.getLocalAddr())) {
+				if (!survey.getIpAddress().equalsIgnoreCase(httpServletRequest.getRemoteAddr())) {
 					log.warn(UNAUTHORIZED_ATTEMPT_TO_ACCESS_SURVEY_WARNING_MESSAGE + httpServletRequest.getPathInfo() + FROM_IP_WARNING_MESSAGE + httpServletRequest.getLocalAddr());
 					return "accessDenied";
 				}
@@ -450,7 +450,7 @@ public class PublicSurveyController {
 				return "accessDenied";
 			}
 			//Attempt to access a survey from different IP Address
-			if (!surveyPage.getSurvey().getIpAddress().equalsIgnoreCase(httpServletRequest.getLocalAddr())) {
+			if (!surveyPage.getSurvey().getIpAddress().equalsIgnoreCase(httpServletRequest.getRemoteAddr())) {
 				log.warn(UNAUTHORIZED_ATTEMPT_TO_ACCESS_SURVEY_WARNING_MESSAGE + httpServletRequest.getPathInfo() + FROM_IP_WARNING_MESSAGE + httpServletRequest.getLocalAddr());
 				return "accessDenied";
 			}
@@ -497,7 +497,7 @@ public class PublicSurveyController {
 				return "accessDenied";
 			}
 			//Attempt to access a survey from different IP Address
-			if (!survey.getIpAddress().equalsIgnoreCase(httpServletRequest.getLocalAddr())) {
+			if (!survey.getIpAddress().equalsIgnoreCase(httpServletRequest.getRemoteAddr())) {
 				log.warn(UNAUTHORIZED_ATTEMPT_TO_ACCESS_SURVEY_WARNING_MESSAGE + httpServletRequest.getPathInfo() + FROM_IP_WARNING_MESSAGE + httpServletRequest.getLocalAddr());
 				return "accessDenied";
 			}
