@@ -386,7 +386,7 @@ public class PublicSurveyController {
 			}
 			
 			//Attempt to access a survey from different IP Address
-			if (!survey.getIpAddress().equalsIgnoreCase(httpServletRequest.getLocalAddr())) {
+			if (!survey.getIpAddress().equalsIgnoreCase(httpServletRequest.getRemoteAddr())) {
 				log.warn(UNAUTHORIZED_ATTEMPT_TO_ACCESS_SURVEY_WARNING_MESSAGE + httpServletRequest.getPathInfo() + FROM_IP_WARNING_MESSAGE + httpServletRequest.getLocalAddr());
 				return "accessDenied";
 			}
