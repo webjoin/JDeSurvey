@@ -81,17 +81,23 @@ public class SurveyService {
 	 * @return
 	 */
 	@Transactional(readOnly = false)
-	public Survey survey_create(Long surveyDefinitionId, String login, String ipAddress){
-			User user=null;
-			SurveyDefinition surveyDefinition  = surveyDefinitionDAO.findById(surveyDefinitionId);
-			if (login!=null && login.length() >0) {
-				user = userDAO.findByLogin(login);
-			}
-			Survey survey;
-			if (user!=null) { survey = new Survey(surveyDefinition, user,ipAddress);} else {survey = new Survey(surveyDefinition, ipAddress);};
-			survey =  surveyDAO.merge(survey);
-			surveyDAO.initialize(survey,surveyDefinition);
-			return survey;
+	public Survey survey_create(Long surveyDefinitionId, String login,
+			String ipAddress, Long shopId) {
+		User user = null;
+		SurveyDefinition surveyDefinition = surveyDefinitionDAO.findById(surveyDefinitionId);
+		if (login != null && login.length() > 0) {
+			user = userDAO.findByLogin(login);
+		}
+		Survey survey;
+		if (user != null) {
+			survey = new Survey(surveyDefinition, user, ipAddress);
+		} else {
+			survey = new Survey(surveyDefinition, ipAddress);
+		}
+		survey.setShopId(shopId);
+		survey = surveyDAO.merge(survey);
+		surveyDAO.initialize(survey, surveyDefinition);
+		return survey;
 	}
 
 	/**

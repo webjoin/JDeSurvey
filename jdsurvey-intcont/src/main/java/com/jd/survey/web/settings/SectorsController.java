@@ -39,7 +39,6 @@ import org.springframework.web.util.WebUtils;
 import com.jd.survey.domain.security.User;
 import com.jd.survey.domain.settings.Sector;
 import com.jd.survey.domain.settings.SurveyTemplate;
-import com.jd.survey.domain.settings.VelocityTemplate;
 import com.jd.survey.service.security.UserService;
 import com.jd.survey.service.settings.SurveySettingsService;
 

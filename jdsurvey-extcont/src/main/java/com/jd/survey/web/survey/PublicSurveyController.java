@@ -38,7 +38,6 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.velocity.VelocityContext;
 import org.apache.velocity.app.Velocity;
-import org.apache.velocity.app.VelocityEngine;
 import org.owasp.validator.html.AntiSamy;
 import org.owasp.validator.html.CleanResults;
 import org.owasp.validator.html.Policy;
@@ -46,10 +45,10 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.MessageSource;
 import org.springframework.context.i18n.LocaleContextHolder;
 import org.springframework.security.access.AccessDeniedException;
-import org.springframework.security.access.annotation.Secured;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.validation.BindingResult;
+import org.springframework.web.bind.ServletRequestUtils;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -60,7 +59,6 @@ import org.springframework.web.util.UriUtils;
 import org.springframework.web.util.WebUtils;
 
 import com.jd.survey.GlobalSettings;
-import com.jd.survey.domain.security.User;
 import com.jd.survey.domain.settings.QuestionOption;
 import com.jd.survey.domain.settings.SurveyDefinition;
 import com.jd.survey.domain.survey.QuestionAnswer;
@@ -72,6 +70,7 @@ import com.jd.survey.service.security.UserService;
 import com.jd.survey.service.settings.ApplicationSettingsService;
 import com.jd.survey.service.settings.SurveySettingsService;
 import com.jd.survey.service.survey.SurveyService;
+import com.jd.survey.util.ServletUtils;
 
 
 
@@ -86,7 +85,7 @@ public class PublicSurveyController {
 	private static final String SURVEY_NOT_PUBLIC_WARNING_MESSAGE = "Attempt to access private survey definition from the following public open url:";
 	private static final String IP_ADDRESS_USED_ALREADY_WARNING_MESSAGE = "Attempt to create a new survey from a previously used IP address url:";
 	private static final String UNAUTHORIZED_ATTEMPT_TO_ACCESS_SURVEY_WARNING_MESSAGE = "Attempt to access public survey from a different IP Address than the one used to create the survey. url:";
-	private static final String UNAUTHORIZED_ATTEMPT_TO_EDIT_SUBMITTED_SURVEY_WARNING_MESSAGE = "Unauthorized Attempt to edit a submitted survey:";
+//	private static final String UNAUTHORIZED_ATTEMPT_TO_EDIT_SUBMITTED_SURVEY_WARNING_MESSAGE = "Unauthorized Attempt to edit a submitted survey:";
 	
 	private static final String  POLICY_FILE_LOCATION="/antisamy-tinymce-1-4-4.xml";
 	
@@ -150,19 +149,19 @@ public class PublicSurveyController {
 							 		HttpServletRequest httpServletRequest) {
 		log.info("listSurveyEntries of type id=" + surveyDefinitionId);
 		try{
+			long shopid = ServletRequestUtils.getLongParameter(httpServletRequest, "shopid",0L);
 			SurveyDefinition surveyDefinition =surveySettingsService.surveyDefinition_findById(surveyDefinitionId);
 			if (!surveyDefinition.getIsPublic()) {//survey definition not open to the public
 				//attempt to access a private survey definition from a public open url 
 				log.warn(SURVEY_NOT_PUBLIC_WARNING_MESSAGE + httpServletRequest.getPathInfo() + FROM_IP_WARNING_MESSAGE + httpServletRequest.getLocalAddr());
 				return "accessDenied";
 			}
-			
-			Set<Survey> userSurveyEntries= surveyService.survey_findUserEntriesByTypeIdAndIpAddress(surveyDefinitionId,httpServletRequest.getRemoteAddr());
+			Set<Survey> userSurveyEntries= surveyService.survey_findUserEntriesByTypeIdAndIpAddress(surveyDefinitionId,ServletUtils.getRemoteAddr(httpServletRequest));
 			if (surveyDefinition.getAllowMultipleSubmissions()) {//allow multiple submissions of this survey from the same client IP Address
 				if (userSurveyEntries == null || userSurveyEntries.size() == 0) {	//No User entries for this survey, create a new one
-					Survey survey =surveyService.survey_create(surveyDefinitionId,null,httpServletRequest.getRemoteAddr());
+					Survey survey =surveyService.survey_create(surveyDefinitionId,null,ServletUtils.getRemoteAddr(httpServletRequest),shopid);
 					return "redirect:/open/" + encodeUrlPathSegment(survey.getId().toString(), httpServletRequest) +"/1";
-				} 
+				}
 				else {//entries found 
 					if (userSurveyEntries.size() ==1) {
 						//only on entry found 
@@ -184,7 +183,7 @@ public class PublicSurveyController {
 				//do not allow multiple submissions of this survey from the same client IP Address
 				if (userSurveyEntries == null || userSurveyEntries.size() == 0) {
 					//No User entries for this survey, create a new one
-					Survey survey =surveyService.survey_create(surveyDefinitionId,null,httpServletRequest.getRemoteAddr());
+					Survey survey =surveyService.survey_create(surveyDefinitionId,null,ServletUtils.getRemoteAddr(httpServletRequest),shopid);
 					return "redirect:/open/" + encodeUrlPathSegment(survey.getId().toString(), httpServletRequest) +"/1";
 				}
 				else {
@@ -224,6 +223,7 @@ public class PublicSurveyController {
 						 		HttpServletRequest httpServletRequest) {
 		log.info("create a new survey of type id=" + surveyDefinitionId);
 		try{
+			long shopid = ServletRequestUtils.getLongParameter(httpServletRequest, "shopid",0L);
 			SurveyDefinition surveyDefinition =surveySettingsService.surveyDefinition_findById(surveyDefinitionId);
 			if (!surveyDefinition.getIsPublic()) {//survey definition not open to the public
 				//attempt to access a private survey definition from a public open url 
@@ -231,7 +231,7 @@ public class PublicSurveyController {
 				return "accessDenied";
 			}
 			
-			Survey survey =surveyService.survey_create(surveyDefinitionId,null, httpServletRequest.getRemoteAddr());
+			Survey survey =surveyService.survey_create(surveyDefinitionId,null, ServletUtils.getRemoteAddr(httpServletRequest),shopid);
 			
 			return "redirect:/open/" + encodeUrlPathSegment(survey.getId().toString(), httpServletRequest) +"/1";
 			
@@ -262,7 +262,7 @@ public class PublicSurveyController {
 				return "accessDenied";
 			}
 
-			if (!survey.getIpAddress().equalsIgnoreCase(httpServletRequest.getRemoteAddr())) {
+			if (!survey.getIpAddress().equalsIgnoreCase(ServletUtils.getRemoteAddr(httpServletRequest))) {
 				//Attempt to access a survey from different IP Address 
 				log.warn(UNAUTHORIZED_ATTEMPT_TO_ACCESS_SURVEY_WARNING_MESSAGE + httpServletRequest.getPathInfo() + FROM_IP_WARNING_MESSAGE + httpServletRequest.getLocalAddr());
 				return "accessDenied";
@@ -312,7 +312,7 @@ public class PublicSurveyController {
 				}
 				
 				//Attempt to access a survey from different IP Address
-				if (!survey.getIpAddress().equalsIgnoreCase(httpServletRequest.getRemoteAddr())) {
+				if (!survey.getIpAddress().equalsIgnoreCase(ServletUtils.getRemoteAddr(httpServletRequest))) {
 					log.warn(UNAUTHORIZED_ATTEMPT_TO_ACCESS_SURVEY_WARNING_MESSAGE + httpServletRequest.getPathInfo() + FROM_IP_WARNING_MESSAGE + httpServletRequest.getLocalAddr());
 					return "accessDenied";
 				}
@@ -344,7 +344,7 @@ public class PublicSurveyController {
 				}
 				
 				//Attempt to access a survey from different IP Address
-				if (!survey.getIpAddress().equalsIgnoreCase(httpServletRequest.getRemoteAddr())) {
+				if (!survey.getIpAddress().equalsIgnoreCase(ServletUtils.getRemoteAddr(httpServletRequest))) {
 					log.warn(UNAUTHORIZED_ATTEMPT_TO_ACCESS_SURVEY_WARNING_MESSAGE + httpServletRequest.getPathInfo() + FROM_IP_WARNING_MESSAGE + httpServletRequest.getLocalAddr());
 					return "accessDenied";
 				}
@@ -386,7 +386,7 @@ public class PublicSurveyController {
 			}
 			
 			//Attempt to access a survey from different IP Address
-			if (!survey.getIpAddress().equalsIgnoreCase(httpServletRequest.getRemoteAddr())) {
+			if (!survey.getIpAddress().equalsIgnoreCase(ServletUtils.getRemoteAddr(httpServletRequest))) {
 				log.warn(UNAUTHORIZED_ATTEMPT_TO_ACCESS_SURVEY_WARNING_MESSAGE + httpServletRequest.getPathInfo() + FROM_IP_WARNING_MESSAGE + httpServletRequest.getLocalAddr());
 				return "accessDenied";
 			}
@@ -450,7 +450,7 @@ public class PublicSurveyController {
 				return "accessDenied";
 			}
 			//Attempt to access a survey from different IP Address
-			if (!surveyPage.getSurvey().getIpAddress().equalsIgnoreCase(httpServletRequest.getRemoteAddr())) {
+			if (!surveyPage.getSurvey().getIpAddress().equalsIgnoreCase(ServletUtils.getRemoteAddr(httpServletRequest))) {
 				log.warn(UNAUTHORIZED_ATTEMPT_TO_ACCESS_SURVEY_WARNING_MESSAGE + httpServletRequest.getPathInfo() + FROM_IP_WARNING_MESSAGE + httpServletRequest.getLocalAddr());
 				return "accessDenied";
 			}
@@ -497,7 +497,7 @@ public class PublicSurveyController {
 				return "accessDenied";
 			}
 			//Attempt to access a survey from different IP Address
-			if (!survey.getIpAddress().equalsIgnoreCase(httpServletRequest.getRemoteAddr())) {
+			if (!survey.getIpAddress().equalsIgnoreCase(ServletUtils.getRemoteAddr(httpServletRequest))) {
 				log.warn(UNAUTHORIZED_ATTEMPT_TO_ACCESS_SURVEY_WARNING_MESSAGE + httpServletRequest.getPathInfo() + FROM_IP_WARNING_MESSAGE + httpServletRequest.getLocalAddr());
 				return "accessDenied";
 			}

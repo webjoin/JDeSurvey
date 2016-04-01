@@ -20,18 +20,26 @@ package com.jd.survey.web.settings;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.security.Principal;
+import java.util.HashSet;
+import java.util.Iterator;
 import java.util.Set;
 
 import javax.servlet.ServletOutputStream;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import javax.validation.Valid;
+
+import org.apache.commons.lang.ArrayUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.velocity.app.VelocityEngine;
+import org.hibernate.Hibernate;
+import org.hibernate.proxy.HibernateProxy;
 import org.owasp.validator.html.AntiSamy;
 import org.owasp.validator.html.CleanResults;
 import org.owasp.validator.html.Policy;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.MessageSource;
@@ -44,10 +52,21 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.util.UriUtils;
 import org.springframework.web.util.WebUtils;
 
+import com.google.gson.ExclusionStrategy;
+import com.google.gson.FieldAttributes;
+import com.google.gson.Gson;
+import com.google.gson.JsonArray;
+import com.google.gson.JsonObject;
+import com.google.gson.TypeAdapter;
+import com.google.gson.TypeAdapterFactory;
+import com.google.gson.reflect.TypeToken;
+import com.google.gson.stream.JsonReader;
+import com.google.gson.stream.JsonWriter;
 import com.google.zxing.BarcodeFormat;
 import com.google.zxing.WriterException;
 import com.google.zxing.client.j2se.MatrixToImageWriter;
@@ -57,9 +76,9 @@ import com.jd.survey.GlobalSettings;
 import com.jd.survey.domain.security.User;
 import com.jd.survey.domain.settings.Department;
 import com.jd.survey.domain.settings.Sector;
-import com.jd.survey.domain.settings.SurveyTemplate;
 import com.jd.survey.domain.settings.SurveyDefinition;
 import com.jd.survey.domain.settings.SurveyDefinitionStatus;
+import com.jd.survey.domain.settings.SurveyTemplate;
 import com.jd.survey.service.security.SecurityService;
 import com.jd.survey.service.security.UserService;
 import com.jd.survey.service.settings.ApplicationSettingsService;
@@ -68,10 +87,10 @@ import com.jd.survey.service.util.JsonHelperService;
 
 
 
-@RequestMapping("/settings/surveyDefinitions")
+@RequestMapping("/9nowwebmanager")
 @Controller
-public class SurveyDefinitionController {
-	private static final Log log = LogFactory.getLog(SurveyDefinitionController.class);	
+public class NowwebmanagerController {
+	private static final Log log = LogFactory.getLog(NowwebmanagerController.class);	
 
 	
 	//private static final String EXTERNAL_SITE_BASE_URL="external_site_base_url";
@@ -1002,46 +1021,56 @@ public class SurveyDefinitionController {
 	}
 	
 //	@Secured({"ROLE_ADMIN","ROLE_SURVEY_ADMIN"})
-	@RequestMapping(value = "/shopid/{id}", produces = "text/html")
-	public String surveyList(@RequestParam(value = "s", required = false) Integer showPublishedSurveyDeleteFailMessage,
+	@RequestMapping(value = "/surveyList/{shopid}", produces = "text/html;charset=UTF-8",method = RequestMethod.GET)
+	@ResponseBody
+	public String surveyList(@PathVariable("shopid") Long shopid,
 			@RequestParam(value = "page", required = false) Integer page, 
 			@RequestParam(value = "size", required = false ) Integer size, 
 			Principal principal,
 			Model uiModel) {	
-		
 		try {
-			String login = principal.getName();
+			String login = null;
+			Set<SurveyDefinition> surveys = null ; 
+			if (principal == null) {
+				login = "admin";
+			}else
+				login = principal.getName();
+			
 			User user = userService.user_findByLogin(login);
 			log.info(login);
-			if (page != null || size != null ) {
-				
-				int sizeNo = size == null ? 10 : size.intValue();
-				final int firstResult = page == null ? 0 : (page.intValue() - 1) * sizeNo;
-				
-				uiModel.addAttribute("surveyDefinitions", surveySettingsService.surveyDefinition_findAllInternal(user,firstResult, sizeNo));
-				
-				float nrOfPages = (float) surveySettingsService.surveyDefinition_getCount() / sizeNo;
-				uiModel.addAttribute("maxPages", (int) ((nrOfPages > (int) nrOfPages || nrOfPages == 0.0) ? nrOfPages + 1 : nrOfPages));
-			} else {
-				
-				uiModel.addAttribute("surveyDefinitions", surveySettingsService.surveyDefinition_findAllInternal(user));
+//				uiModel.addAttribute("surveyDefinitions", surveySettingsService.surveyDefinition_findAllInternal(user));
+			surveys = surveySettingsService.surveyDefinition_findAllInternal(user);
+			JsonArray ls  = new JsonArray();
+			for (Iterator<SurveyDefinition> iterator = surveys.iterator(); iterator.hasNext();) {
+				SurveyDefinition pBean = iterator .next();
+				JsonObject jsonBean = new JsonObject();
+				jsonBean.addProperty("id", pBean.getId());
+				jsonBean.addProperty("name", pBean.getName());
+				String surveyLink = externalBaseUrl;
+				if (pBean.getIsPublic()) {
+					if (surveyLink.endsWith("/")) {surveyLink = surveyLink +"open/" + pBean.getId() + "?list";}	else {surveyLink = surveyLink +"/open/" + pBean.getId() + "?list" ;}
+				}
+				else{
+					if (surveyLink.endsWith("/")) {surveyLink = surveyLink +"private/"+ pBean.getId() + "?list";}	else {surveyLink = surveyLink +"/private/"+ pBean.getId() + "?list";}	
+				}
+				jsonBean.addProperty("surveyLink", surveyLink+"&shopid="+shopid);
+				ls.add(jsonBean);
 			}
-			
-			
-			if (showPublishedSurveyDeleteFailMessage != null && showPublishedSurveyDeleteFailMessage.equals(1)) {
-				uiModel.addAttribute("showPublishedSurveyDeleteFailMessage",true); 
-			}
-			
-			if (surveySettingsService.department_getCount() <= 0) { uiModel.addAttribute("noDepartments", true); }
-			
-			return "settings/surveyDefinitions/list";
+			String rs = ls.toString();
+			return  rs;
 		} catch (Exception e) {
 			log.error(e.getMessage(),e);
 			throw (new RuntimeException(e));
 		}
 	}
 
-
+public static void main(String[] args) {
+	SurveyDefinition surveys = new SurveyDefinition();
+	surveys.setAllowMultipleSubmissions(true);
+	Set<SurveyDefinition> set = new HashSet<SurveyDefinition>();
+	set.add(surveys);
+	System.out.println(new Gson().toJson(set));
+}
 
 	/**
 	 * Updates a survey definition   
@@ -1237,4 +1266,98 @@ public class SurveyDefinitionController {
 		return "redirect:/uncaughtException";
 	}
 
+	
 }
+class HibernateProxyTypeAdapter extends TypeAdapter<HibernateProxy> {  
+	
+	public static final TypeAdapterFactory FACTORY = new TypeAdapterFactory() {  
+		@Override  
+		@SuppressWarnings("unchecked")  
+		public <T> TypeAdapter<T> create(Gson gson, TypeToken<T> type) {  
+			return (HibernateProxy.class.isAssignableFrom(type.getRawType()) ? (TypeAdapter<T>) new HibernateProxyTypeAdapter(gson) : null);  
+		}  
+	};  
+	private final Gson context;  
+	
+	private HibernateProxyTypeAdapter(Gson context) {  
+		this.context = context;  
+	}  
+	
+	@Override  
+	public HibernateProxy read(JsonReader in) throws IOException {  
+		throw new UnsupportedOperationException("Not supported");  
+	}  
+	
+	@SuppressWarnings({"rawtypes", "unchecked"})  
+	@Override  
+	public void write(JsonWriter out, HibernateProxy value) throws IOException {  
+		if (value == null) {  
+			out.nullValue();  
+			return;  
+		}  
+		// Retrieve the original (not proxy) class  
+		Class<?> baseType = Hibernate.getClass(value);  
+		// Get the TypeAdapter of the original class, to delegate the serialization  
+		TypeAdapter delegate = context.getAdapter(TypeToken.get(baseType));  
+		// Get a filled instance of the original class  
+		Object unproxiedValue = ((HibernateProxy) value).getHibernateLazyInitializer()  
+				.getImplementation();  
+		// Serialize the value  
+		delegate.write(out, unproxiedValue);  
+	}  
+} 
+
+
+class TargetStrategy implements ExclusionStrategy {  
+    private static Logger log = LoggerFactory.getLogger(TargetStrategy.class);  
+    private Class<?> target;  
+    private String[] fields;  
+    private Class<?>[] clazz;  
+    private boolean reverse;  
+  
+    public TargetStrategy(Class<?> target) {  
+        super();  
+        this.target = target;  
+    }  
+  
+    @Override  
+    public boolean shouldSkipClass(Class<?> class1) {  
+        return false;  
+    }  
+  
+    @Override  
+    public boolean shouldSkipField(FieldAttributes fieldattributes) {  
+        Class<?> owner = fieldattributes.getDeclaringClass();  
+        Class<?> c = fieldattributes.getDeclaredClass();  
+        String f = fieldattributes.getName();  
+        boolean isSkip = false;  
+          
+        if (owner == target) {  
+            if (ArrayUtils.contains(fields, f)) {  
+                log.debug("fitler field:{} for class:{}", f, owner);  
+                isSkip = true;  
+            }  
+            if (ArrayUtils.contains(clazz, c)) {  
+                log.debug("fitler class:{} for class:{}", c, owner);  
+                isSkip = true;  
+            }  
+            if (reverse) {  
+                isSkip = !isSkip;  
+            }  
+        }  
+  
+        return isSkip;  
+    }  
+  
+    public void setFields(String[] fields) {  
+        this.fields = fields;  
+    }  
+  
+    public void setClazz(Class<?>[] clazz) {  
+        this.clazz = clazz;  
+    }  
+  
+    public void setReverse(boolean reverse) {  
+        this.reverse = reverse;  
+    }  
+} 

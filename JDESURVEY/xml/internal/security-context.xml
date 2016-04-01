@@ -17,6 +17,7 @@
 		<intercept-url pattern="/surveys/**" access="hasAnyRole('ROLE_SURVEY_ADMIN','ROLE_ADMIN')" />
 		
         <intercept-url pattern="/settings/**" access="hasAnyRole('ROLE_SURVEY_ADMIN','ROLE_ADMIN')" />
+        <intercept-url pattern="/9nowwebmanager/**" access="permitAll" />
 		<intercept-url pattern="/admin/**" access="hasRole('ROLE_ADMIN')" />
 		<intercept-url pattern="/security/**" access="hasRole('ROLE_ADMIN')" />
 		<intercept-url pattern="/account/**" access="hasRole('ROLE_SURVEY_ADMIN')" />

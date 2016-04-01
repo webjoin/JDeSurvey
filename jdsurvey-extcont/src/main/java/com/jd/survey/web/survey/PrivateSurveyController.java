@@ -28,6 +28,7 @@ import javax.servlet.ServletOutputStream;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import javax.validation.Valid;
+
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.owasp.validator.html.AntiSamy;
@@ -41,6 +42,7 @@ import org.springframework.security.access.annotation.Secured;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.validation.BindingResult;
+import org.springframework.web.bind.ServletRequestUtils;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -64,6 +66,7 @@ import com.jd.survey.service.security.UserService;
 import com.jd.survey.service.settings.ApplicationSettingsService;
 import com.jd.survey.service.settings.SurveySettingsService;
 import com.jd.survey.service.survey.SurveyService;
+import com.jd.survey.util.ServletUtils;
 
 
 
@@ -172,6 +175,7 @@ public class PrivateSurveyController {
 							 		Principal principal,
 							 		HttpServletRequest httpServletRequest) {
 		try{
+			long shopid = ServletRequestUtils.getLongParameter(httpServletRequest, "shopid",0L);
 			String login = principal.getName();
 			User user = userService.user_findByLogin(login);
 			//Check if the user is authorized
@@ -186,7 +190,7 @@ public class PrivateSurveyController {
 
 			if (userSurveyEntries == null || userSurveyEntries.size() == 0) {
 				//No User entries for this survey, create a new one
-				Survey survey =surveyService.survey_create(surveyDefinitionId,login,httpServletRequest.getRemoteAddr());
+				Survey survey =surveyService.survey_create(surveyDefinitionId,login,ServletUtils.getRemoteAddr(httpServletRequest),shopid);
 				return "redirect:/private/" + encodeUrlPathSegment(survey.getId().toString(), httpServletRequest) +"/1";
 			} 
 			//entries found
@@ -240,6 +244,7 @@ public class PrivateSurveyController {
 						 		Principal principal,
 						 		HttpServletRequest httpServletRequest) {
 		try{
+			long shopid = ServletRequestUtils.getLongParameter(httpServletRequest, "shopid",0L);
 			String login = principal.getName();
 			User user = userService.user_findByLogin(login);
 			//Check if the user is authorized
@@ -248,7 +253,7 @@ public class PrivateSurveyController {
 				return "accessDenied";	
 				
 			}
-			Survey survey =surveyService.survey_create(surveyDefinitionId,login, httpServletRequest.getRemoteAddr());
+			Survey survey =surveyService.survey_create(surveyDefinitionId,login, ServletUtils.getRemoteAddr(httpServletRequest),shopid);
 			return "redirect:/private/" + encodeUrlPathSegment(survey.getId().toString(), httpServletRequest) +"/1";
 		} catch (Exception e) {
 			log.error(e.getMessage(),e);

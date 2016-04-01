@@ -77,6 +77,9 @@ public class Survey implements Serializable{
 	@Column(name = "SURVEY_DEFINITION_ID")
 	Long typeId;
 	
+	@Column(name = "SURVEY_SHOP_ID")
+	Long shopId;
+	
 
 	@Column(length = 100, nullable= true)
 	private String login;
@@ -94,6 +97,8 @@ public class Survey implements Serializable{
 	
 	@Column(length = 100, nullable= true)
 	private String email;
+	
+	
 	
 	
 	
@@ -283,6 +288,14 @@ public class Survey implements Serializable{
 	
 	
 	
+	public Long getShopId() {
+		return shopId;
+	}
+
+	public void setShopId(Long shopId) {
+		this.shopId = shopId;
+	}
+
 	public Date getSubmissionDate() {
 		return submissionDate;
 	}

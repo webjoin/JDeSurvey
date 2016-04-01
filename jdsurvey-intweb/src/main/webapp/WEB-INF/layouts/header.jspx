@@ -41,8 +41,8 @@
 	 
 	 
 	<div class="header-search-form">
-			<div class="logo">
-			<img src="${banner}" alt="logo" title="logo"/>
+			<div class="logo" style="height:59px">
+			<img src="${banner}" alt="logo" title="logo" style="width: auto;height:100%;" />
 			</div>
 	</div>
 	
