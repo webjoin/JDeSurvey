@@ -70,6 +70,7 @@ import com.jd.survey.service.security.UserService;
 import com.jd.survey.service.settings.ApplicationSettingsService;
 import com.jd.survey.service.settings.SurveySettingsService;
 import com.jd.survey.service.survey.SurveyService;
+import com.jd.survey.util.Des;
 import com.jd.survey.util.ServletUtils;
 
 
@@ -142,6 +143,7 @@ public class PublicSurveyController {
 	 * @param httpServletRequest
 	 * @return
 	 */
+	private final static String strKey = "0002000200020002";
 	@RequestMapping(value = "/{id}", params = "list", produces = "text/html")
 	public String listSurveyEntries(@PathVariable("id") Long surveyDefinitionId, 
 									Model uiModel,
@@ -149,18 +151,35 @@ public class PublicSurveyController {
 							 		HttpServletRequest httpServletRequest) {
 		log.info("listSurveyEntries of type id=" + surveyDefinitionId);
 		try{
-			long shopid = ServletRequestUtils.getLongParameter(httpServletRequest, "shopid",0L);
+			Long shopid = null ;
+			String phone = "" ;
+			String ctxDate = "";
+			String shopidStr = ServletRequestUtils.getStringParameter(httpServletRequest, "shopid","");
+			try {
+				String shopidStr1 = Des.Decrypt(shopidStr, Des.hex2byte(strKey));
+				String[] strs = shopidStr1.split("\\|");
+				shopid = Long.valueOf(strs[0]);
+				phone = strs[1];
+				ctxDate = strs[2];
+			} catch (Exception e) {
+				shopid = ServletRequestUtils.getLongParameter(httpServletRequest, "shopid",0L);
+			}
+			
+			if (shopid == null || shopid == 0) {
+				log.warn("shopid is null , so "+SURVEY_NOT_PUBLIC_WARNING_MESSAGE + httpServletRequest.getPathInfo() + FROM_IP_WARNING_MESSAGE + httpServletRequest.getLocalAddr());
+				return "accessDenied";
+			}
 			SurveyDefinition surveyDefinition =surveySettingsService.surveyDefinition_findById(surveyDefinitionId);
 			if (!surveyDefinition.getIsPublic()) {//survey definition not open to the public
 				//attempt to access a private survey definition from a public open url 
 				log.warn(SURVEY_NOT_PUBLIC_WARNING_MESSAGE + httpServletRequest.getPathInfo() + FROM_IP_WARNING_MESSAGE + httpServletRequest.getLocalAddr());
 				return "accessDenied";
 			}
-			Set<Survey> userSurveyEntries= surveyService.survey_findUserEntriesByTypeIdAndIpAddress(surveyDefinitionId,ServletUtils.getRemoteAddr(httpServletRequest));
+			Set<Survey> userSurveyEntries= surveyService.survey_findUserEntriesByTypeIdAndIpAddress(surveyDefinitionId,ServletUtils.getRemoteAddr(httpServletRequest),shopid,phone);
 			if (surveyDefinition.getAllowMultipleSubmissions()) {//allow multiple submissions of this survey from the same client IP Address
 				if (userSurveyEntries == null || userSurveyEntries.size() == 0) {	//No User entries for this survey, create a new one
-					Survey survey =surveyService.survey_create(surveyDefinitionId,null,ServletUtils.getRemoteAddr(httpServletRequest),shopid);
-					return "redirect:/open/" + encodeUrlPathSegment(survey.getId().toString(), httpServletRequest) +"/1";
+					Survey survey =surveyService.survey_create(surveyDefinitionId,null,ServletUtils.getRemoteAddr(httpServletRequest),shopid,phone,ctxDate);
+					return "redirect:/open/" + encodeUrlPathSegment(survey.getId().toString(), httpServletRequest) +"/1?shopid="+shopidStr;
 				}
 				else {//entries found 
 					if (userSurveyEntries.size() ==1) {
@@ -169,13 +188,14 @@ public class PublicSurveyController {
 						Survey survey =it.next(); // get the first and only element in the set
 						if (survey.getStatus() == SurveyStatus.I || survey.getStatus() == SurveyStatus.R) {	//survey is incomplete or reopened
 							//go directly to the survey first page
-							return "redirect:/open/" + encodeUrlPathSegment(survey.getId().toString(), httpServletRequest) +"/1";	
+							return "redirect:/open/" + encodeUrlPathSegment(survey.getId().toString(), httpServletRequest) +"/1?shopid="+shopidStr;	
 						}
 					}
 					//multiple entries found
 					uiModel.addAttribute("survey_base_path", "open");
 					uiModel.addAttribute("surveyDefinition", surveyDefinition);
 					uiModel.addAttribute("userSurveyEntries", userSurveyEntries);
+					uiModel.addAttribute("shopid", shopidStr);
 					return "surveys/entries";
 				}
 			}
@@ -183,8 +203,8 @@ public class PublicSurveyController {
 				//do not allow multiple submissions of this survey from the same client IP Address
 				if (userSurveyEntries == null || userSurveyEntries.size() == 0) {
 					//No User entries for this survey, create a new one
-					Survey survey =surveyService.survey_create(surveyDefinitionId,null,ServletUtils.getRemoteAddr(httpServletRequest),shopid);
-					return "redirect:/open/" + encodeUrlPathSegment(survey.getId().toString(), httpServletRequest) +"/1";
+					Survey survey =surveyService.survey_create(surveyDefinitionId,null,ServletUtils.getRemoteAddr(httpServletRequest),shopid,phone,ctxDate);
+					return "redirect:/open/" + encodeUrlPathSegment(survey.getId().toString(), httpServletRequest) +"/1?shopid="+shopidStr;
 				}
 				else {
 					if (userSurveyEntries.size() ==1) {
@@ -193,7 +213,7 @@ public class PublicSurveyController {
 						Survey survey =it.next(); // get the first and only element in the set
 						if (survey.getStatus() == SurveyStatus.I || survey.getStatus() == SurveyStatus.R) {	//survey is incomplete or reopened
 							//go directly to the survey first page
-							return "redirect:/open/" + encodeUrlPathSegment(survey.getId().toString(), httpServletRequest) +"/1";	
+							return "redirect:/open/" + encodeUrlPathSegment(survey.getId().toString(), httpServletRequest) +"/1?shopid="+shopidStr;	
 						}
 					}
 					//otherwise you have already completed the survey
@@ -223,7 +243,26 @@ public class PublicSurveyController {
 						 		HttpServletRequest httpServletRequest) {
 		log.info("create a new survey of type id=" + surveyDefinitionId);
 		try{
-			long shopid = ServletRequestUtils.getLongParameter(httpServletRequest, "shopid",0L);
+			Long shopid = null ;
+			String phone = "" ;
+			String ctxDate = "" ;
+			String shopidStr = ServletRequestUtils.getStringParameter(httpServletRequest, "shopid","");
+			try {
+				String shopidStr1 = Des.Decrypt(shopidStr, Des.hex2byte(strKey));
+				String[] strs = shopidStr1.split("\\|");
+				
+				shopid = Long.valueOf(strs[0]);
+				phone = strs[1];
+				ctxDate = strs[2];
+				
+			} catch (Exception e) {
+				shopid = ServletRequestUtils.getLongParameter(httpServletRequest, "shopid",0L);
+			}
+			
+			if (shopid == null || shopid == 0) {
+				log.warn("shopid is null , so "+SURVEY_NOT_PUBLIC_WARNING_MESSAGE + httpServletRequest.getPathInfo() + FROM_IP_WARNING_MESSAGE + httpServletRequest.getLocalAddr());
+				return "accessDenied";
+			}
 			SurveyDefinition surveyDefinition =surveySettingsService.surveyDefinition_findById(surveyDefinitionId);
 			if (!surveyDefinition.getIsPublic()) {//survey definition not open to the public
 				//attempt to access a private survey definition from a public open url 
@@ -231,9 +270,9 @@ public class PublicSurveyController {
 				return "accessDenied";
 			}
 			
-			Survey survey =surveyService.survey_create(surveyDefinitionId,null, ServletUtils.getRemoteAddr(httpServletRequest),shopid);
+			Survey survey =surveyService.survey_create(surveyDefinitionId,null, ServletUtils.getRemoteAddr(httpServletRequest),shopid,phone,ctxDate);
 			
-			return "redirect:/open/" + encodeUrlPathSegment(survey.getId().toString(), httpServletRequest) +"/1";
+			return "redirect:/open/" + encodeUrlPathSegment(survey.getId().toString(), httpServletRequest) +"/1?shopid="+shopidStr;
 			
 		} catch (Exception e) {
 			log.error(e.getMessage(),e);
@@ -254,6 +293,7 @@ public class PublicSurveyController {
 							   HttpServletRequest httpServletRequest) {
 		log.info("Submit survey  id=" + surveyId);
 		try{
+			String shopid = ServletRequestUtils.getStringParameter(httpServletRequest, "shopid","");
 			Survey survey =surveyService.survey_findById(surveyId);
 			SurveyDefinition surveyDefinition =surveySettingsService.surveyDefinition_findById(survey.getTypeId());
 			if (!surveyDefinition.getIsPublic()) {//survey definition not open to the public
@@ -274,6 +314,7 @@ public class PublicSurveyController {
 			uiModel.addAttribute("surveyDefinition", surveySettingsService.surveyDefinition_findById(survey.getTypeId()));
 			uiModel.addAttribute("surveyPages", surveyPages);
 			uiModel.addAttribute("order", surveyPages.size() +1);
+			uiModel.addAttribute("shopid",shopid);
 			return "surveys/submit";
 			
 		} catch (Exception e) {
@@ -300,6 +341,7 @@ public class PublicSurveyController {
 		log.info("submitPost(open): id= " + surveyId);
 		
 		try {
+			String shopid = ServletRequestUtils.getStringParameter(httpServletRequest, "shopid","");
 			if(proceedAction!=null){ //submit button
 				uiModel.asMap().clear();
 				Survey survey = surveyService.survey_submit(surveyId);
@@ -318,7 +360,7 @@ public class PublicSurveyController {
 				}
 				
 				if (surveyDefinition.getAllowMultipleSubmissions()) {
-					return "redirect:/open/" + encodeUrlPathSegment(survey.getTypeId().toString(), httpServletRequest) + "?list";	
+					return "redirect:/open/" + encodeUrlPathSegment(survey.getTypeId().toString(), httpServletRequest) + "?list&shopid="+shopid;	
 				}
 				else
 				{
@@ -328,6 +370,7 @@ public class PublicSurveyController {
 					Velocity.evaluate(velocityContext, sw, "velocity-log" , 
 							 		  surveyDefinition.getCompletedSurveyTemplate());
 					uiModel.addAttribute("completedMessage",sw.toString().trim());
+					uiModel.addAttribute("shopid",shopid);
 					return "surveys/submitted";
 				}
 			}
@@ -350,7 +393,7 @@ public class PublicSurveyController {
 				}
 				List<SurveyPage> surveyPages = surveyService.surveyPage_getAll(surveyId,messageSource.getMessage(DATE_FORMAT, null, LocaleContextHolder.getLocale()));
 				Short order  = (short) surveyPages.size();
-				return "redirect:/open/" + encodeUrlPathSegment(survey.getId().toString(), httpServletRequest) +"/" + encodeUrlPathSegment(order.toString(), httpServletRequest);
+				return "redirect:/open/" + encodeUrlPathSegment(survey.getId().toString(), httpServletRequest) +"/" + encodeUrlPathSegment(order.toString(), httpServletRequest)+"?shopid="+shopid;
 			}
 				
 
@@ -377,6 +420,7 @@ public class PublicSurveyController {
 					   		 HttpServletRequest httpServletRequest) {
 		log.info("showSurvey surveyId=" + surveyId + " no pageOrder");
 		try{
+			String shopid = ServletRequestUtils.getStringParameter(httpServletRequest, "shopid","");
 			Survey survey =surveyService.survey_findById(surveyId);
 			SurveyDefinition surveyDefinition =surveySettingsService.surveyDefinition_findById(survey.getTypeId());
 			//survey definition not open to the public
@@ -393,7 +437,7 @@ public class PublicSurveyController {
 			
 			List<SurveyPage> surveyPages = surveyService.surveyPage_getAll(surveyId,messageSource.getMessage(DATE_FORMAT, null, LocaleContextHolder.getLocale()));
 			if (survey.getStatus() == SurveyStatus.I) {
-				return "redirect:/open/" + encodeUrlPathSegment(surveyId.toString(), httpServletRequest) +"/1";
+				return "redirect:/open/" + encodeUrlPathSegment(surveyId.toString(), httpServletRequest) +"/1?shopid="+shopid;
 			}
 			else
 			{
@@ -427,6 +471,7 @@ public class PublicSurveyController {
 						   		 HttpServletRequest httpServletRequest) {
 		log.info("editSurveyPage surveyId=" + surveyId + " pageOrder" + order);
 		try{
+			String shopid = ServletRequestUtils.getStringParameter(httpServletRequest, "shopid","");
 			SurveyPage surveyPage  = surveyService.surveyPage_get(surveyId, order,messageSource.getMessage(DATE_FORMAT, null, LocaleContextHolder.getLocale()));
 			SurveyDefinition surveyDefinition =surveySettingsService.surveyDefinition_findById(surveyPage.getSurvey().getTypeId());
 			
@@ -461,6 +506,7 @@ public class PublicSurveyController {
 			uiModel.addAttribute("surveyPage", surveyPage);
 			uiModel.addAttribute("surveyDefinition", surveySettingsService.surveyDefinition_findById(surveyPage.getSurvey().getTypeId()));
 			uiModel.addAttribute("surveyPages", surveyPages);
+			uiModel.addAttribute("shopid", shopid);
 			return "surveys/page";
 		} catch (Exception e) {
 			log.error(e.getMessage(),e);
@@ -487,7 +533,7 @@ public class PublicSurveyController {
 			Model uiModel,
 			HttpServletRequest httpServletRequest) {
 	try {
-			
+		String shopid = ServletRequestUtils.getStringParameter(httpServletRequest, "shopid","");
 			Short order = surveyPage.getOrder();
 			Survey survey  = surveyService.survey_findById(surveyPage.getSurvey().getId());
 			SurveyDefinition surveyDefinition =surveySettingsService.surveyDefinition_findById(survey.getTypeId());
@@ -558,6 +604,7 @@ public class PublicSurveyController {
 					uiModel.addAttribute("surveyDefinition", surveySettingsService.surveyDefinition_findById(survey.getTypeId()));
 					uiModel.addAttribute("surveyPage", surveyPage);
 					uiModel.addAttribute("surveyPages", surveyPages);
+					uiModel.addAttribute("shopid", shopid);
 					return "surveys/page";
 				}  
 				
@@ -570,12 +617,12 @@ public class PublicSurveyController {
 				if (order.equals((short)0)){
 					//Submit page
 					uiModel.asMap().clear();
-					return "redirect:/open/submit/" + encodeUrlPathSegment(surveyPage.getSurvey().getId().toString(), httpServletRequest);	
+					return "redirect:/open/submit/" + encodeUrlPathSegment(surveyPage.getSurvey().getId().toString(), httpServletRequest)+"?shopid="+shopid;
 				}
 				else{
 					//go to the next page
 					uiModel.asMap().clear();
-					return "redirect:/open/" + encodeUrlPathSegment(surveyPage.getSurvey().getId().toString(), httpServletRequest) +"/" + encodeUrlPathSegment(order.toString(), httpServletRequest);	
+					return "redirect:/open/" + encodeUrlPathSegment(surveyPage.getSurvey().getId().toString(), httpServletRequest) +"/" + encodeUrlPathSegment(order.toString(), httpServletRequest)+"?shopid="+shopid;	
 				}
 
 			}
@@ -585,12 +632,12 @@ public class PublicSurveyController {
 				if (order.equals((short)0)){
 					//Go to the surveyEntries page
 					uiModel.asMap().clear();
-					return "redirect:/open/" + encodeUrlPathSegment(survey.getTypeId().toString(), httpServletRequest) +"?list";
+					return "redirect:/open/" + encodeUrlPathSegment(survey.getTypeId().toString(), httpServletRequest) +"?list&shopid="+shopid;
 				}
 				else{
 					//go to previous page
 					uiModel.asMap().clear();
-					return "redirect:/open/" + encodeUrlPathSegment(survey.getId().toString(), httpServletRequest) +"/" + encodeUrlPathSegment(order.toString(), httpServletRequest);
+					return "redirect:/open/" + encodeUrlPathSegment(survey.getId().toString(), httpServletRequest) +"/" + encodeUrlPathSegment(order.toString(), httpServletRequest)+"?shopid="+shopid;
 
 				}
 			}		

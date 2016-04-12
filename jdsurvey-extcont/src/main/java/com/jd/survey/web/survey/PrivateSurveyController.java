@@ -190,7 +190,7 @@ public class PrivateSurveyController {
 
 			if (userSurveyEntries == null || userSurveyEntries.size() == 0) {
 				//No User entries for this survey, create a new one
-				Survey survey =surveyService.survey_create(surveyDefinitionId,login,ServletUtils.getRemoteAddr(httpServletRequest),shopid);
+				Survey survey =surveyService.survey_create(surveyDefinitionId,login,ServletUtils.getRemoteAddr(httpServletRequest),shopid,"phone","20160409");
 				return "redirect:/private/" + encodeUrlPathSegment(survey.getId().toString(), httpServletRequest) +"/1";
 			} 
 			//entries found
@@ -253,7 +253,7 @@ public class PrivateSurveyController {
 				return "accessDenied";	
 				
 			}
-			Survey survey =surveyService.survey_create(surveyDefinitionId,login, ServletUtils.getRemoteAddr(httpServletRequest),shopid);
+			Survey survey =surveyService.survey_create(surveyDefinitionId,login, ServletUtils.getRemoteAddr(httpServletRequest),shopid,"phone","20160409");
 			return "redirect:/private/" + encodeUrlPathSegment(survey.getId().toString(), httpServletRequest) +"/1";
 		} catch (Exception e) {
 			log.error(e.getMessage(),e);
