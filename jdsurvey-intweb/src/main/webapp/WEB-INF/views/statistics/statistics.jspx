@@ -99,8 +99,26 @@
 		<div  class="block">
 			<spring:message	code="statistics_disclaimer_message"/>
 		</div>
-		
 		<c:if test="${!empty surveyDefinition}">
+		请选择店铺ID进行查询：
+		 <select onchange="console.log(this.value);document.getElementById('search_shop').href = this.value ;"> 
+			<option value="${pageContext.request.contextPath}/statistics/list?sid=${surveyDefinition.id}">请选择店</option> 
+		 	 <c:forEach items="${shops}" var="shopId"	varStatus="loop">
+				<spring:url value="/statistics/list" var="link_url1" htmlEscape="false">
+					<spring:param name="sid" value="${surveyDefinition.id}" />
+					<spring:param name="shopId" value="${shopId}" />
+				</spring:url>
+				
+				<c:if test="${param.shopId eq shopId }">
+					 <option value="${link_url1}" selected="selected" >${shopId}</option> 
+				</c:if>
+				<c:if test="${param.shopId != shopId }">
+					 <option value="${link_url1}"  >${shopId}</option> 
+				</c:if>
+				
+				
+			 </c:forEach>
+		 </select><a id="search_shop" href="#">查询</a>  
 		<div id="wr">
 			<div class="questionsList">
 				<ul>
@@ -110,6 +128,7 @@
 							<spring:url value="/statistics/list" var="link_url" htmlEscape="false">
 								<spring:param name="sid" value="${surveyDefinition.id}" />
 								<spring:param name="qid" value="${q.id}" />
+								<spring:param name="shopId" value="${param.shopId}" />
 							</spring:url>
 							<c:if test="${q.order lt 10}" >
 								<c:set var="questionNumber" scope="page" value="0${q.order}. "/>

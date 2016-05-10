@@ -86,7 +86,7 @@
 					              <spring:url value="/resources/images/show.png" var="image_url" />
 					              <spring:message code="com.jd.survey.domain.survey_label" var="typeName" htmlEscape="false" />
 					              <spring:message arguments="${typeName}" code="survey_view" var="action_label" htmlEscape="false" />
-					              	<a href="${form_url}" title="${fn:escapeXml(action_label)}: ${survey.id}" class="showIcon">
+					              	<a href="${form_url}?shopid=${param.shopid}" title="${fn:escapeXml(action_label)}: ${survey.id}" class="showIcon">
 				              			<spring:message text="${fn:escapeXml(action_label)}: ${survey.id}" /> 
 				             	 	</a>
 				              </c:if>
@@ -95,7 +95,7 @@
 					              <spring:url value="/resources/images/update.png" var="image_url" />
 					              <spring:message code="com.jd.survey.domain.survey_label" var="typeName" htmlEscape="false" />
 					              <spring:message arguments="${typeName}" code="survey_fill" var="action_label" htmlEscape="false" />
-					             	<a href="${form_url}" title="${fn:escapeXml(action_label)}: ${survey.id}" class="updateIcon">
+					             	<a href="${form_url}?shopid=${shopid}" title="${fn:escapeXml(action_label)}: ${survey.id}" class="updateIcon">
 				              			<spring:message text="${fn:escapeXml(action_label)}: ${survey.id}" /> 
 				             	 	</a>
 				              </c:if>				       
@@ -112,7 +112,7 @@
 								</spring:url>							   
 					               <spring:message code="com.jd.survey.domain.survey_label" var="typeName" htmlEscape="false" />	
 								   <spring:message arguments="${typeName}" code="survey_create" var="action_label" htmlEscape="false" />
-						              <a href="${create_url}" title="${fn:escapeXml(action_label)}" class="createIcon">
+						              <a href="${create_url}&amp;shopid=${shopid}" title="${fn:escapeXml(action_label)}" class="createIcon">
 									   		<spring:message text="${action_label} "/>
 									  </a>
 					            </span>

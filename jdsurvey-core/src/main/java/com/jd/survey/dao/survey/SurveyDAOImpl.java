@@ -121,6 +121,16 @@ public class SurveyDAOImpl extends AbstractJpaDao<Survey> implements	SurveyDAO {
 		}
 
 	}
+	@Transactional
+	public Survey findDoneById(Long id) throws DataAccessException {
+		try {
+			Query query = createNamedQuery("Survey.findById", -1, -1, id);
+			return (Survey) query.getSingleResult();
+		} catch (NoResultException nre) {
+			return null;
+		}
+		
+	}
 
 	@Transactional
 	public Long getCount() throws DataAccessException {
@@ -144,6 +154,13 @@ public class SurveyDAOImpl extends AbstractJpaDao<Survey> implements	SurveyDAO {
 	public Set<Survey> findAllByTypeId(Long surveyDefinitionId) throws DataAccessException{
 		Query query = createNamedQuery("Survey.findAllByTypeId", -1, -1, surveyDefinitionId);
 		return new LinkedHashSet<Survey>(query.getResultList());
+	}
+
+	@SuppressWarnings("unchecked")
+	@Override
+	public Set<String> findgetShops() throws DataAccessException {
+		Query query = createNamedQuery("Survey.getShops", -1, -1);
+		return new LinkedHashSet<String>(query.getResultList());
 	}
 
 	@SuppressWarnings("unchecked")
@@ -176,8 +193,9 @@ public class SurveyDAOImpl extends AbstractJpaDao<Survey> implements	SurveyDAO {
 
 	@SuppressWarnings("unchecked")
 	@Transactional
-	public Set<Survey> findUserEntriesByTypeIdAndIpAddress(Long surveyDefinitionId,String ipAddress) throws DataAccessException {
-		Query query = createNamedQuery("Survey.findUserEntriesByTypeIdAndIpAddress", -1, -1, surveyDefinitionId,ipAddress);
+	public Set<Survey> findUserEntriesByTypeIdAndIpAddress(Long surveyDefinitionId,String ipAddress,Long shopId,String phone,String ctxDate) throws DataAccessException {
+//		Query query = createNamedQuery("Survey.findUserEntriesByTypeIdAndIpAddress", -1, -1, surveyDefinitionId,ipAddress,shopId,phone,ctxDate);
+		Query query = createNamedQuery("Survey.findUserEntriesByTypeIdAndIpAddress", -1, -1, surveyDefinitionId,shopId,phone,ctxDate);
 		return new LinkedHashSet<Survey>(query.getResultList());
 	}
 

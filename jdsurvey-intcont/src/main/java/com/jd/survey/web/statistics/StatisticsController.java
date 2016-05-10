@@ -26,6 +26,7 @@ import java.util.TreeMap;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
+import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.jfree.chart.ChartFactory;
@@ -94,11 +95,15 @@ public class StatisticsController {
 
 	
 	
-	void populateModel(Model uiModel, Long surveyDefinitionId,Question question,User user) {
+	void populateModel(Model uiModel, Long surveyDefinitionId,Question question,User user,String ... args) {
 		try{
+			//
 			SurveyDefinition surveyDefinition = surveySettingsService.surveyDefinition_findById(surveyDefinitionId);
+			//show all definition
 			Set<SurveyDefinition> surveyDefinitions= surveySettingsService.surveyDefinition_findAllCompletedInternal(user);
-			SurveyStatistic surveyStatistic =surveyService.surveyStatistic_get(surveyDefinitionId);
+			//show total digits
+			SurveyStatistic surveyStatistic =surveyService.surveyStatistic_get(surveyDefinitionId,args);
+			
 			Long recordCount = surveyStatistic.getSubmittedCount();
 			
 			uiModel.addAttribute("question",question); 
@@ -107,7 +112,7 @@ public class StatisticsController {
 			uiModel.addAttribute("surveyDefinitions", surveyDefinitions);
 			uiModel.addAttribute("surveyStatistic", surveyStatistic);
 			uiModel.addAttribute("recordCount", recordCount);
-			uiModel.addAttribute("questionStatistics" ,surveyService.questionStatistic_getStatistics(question,recordCount));
+			uiModel.addAttribute("questionStatistics" ,surveyService.questionStatistic_getStatistics(question,recordCount,args));
 		} catch (Exception e) {
 			log.error(e.getMessage(),e);
 			throw (new RuntimeException(e));
@@ -131,7 +136,6 @@ public class StatisticsController {
 			User user = userService.user_findByLogin(principal.getName());
 			Set<SurveyDefinition> surveyDefinitions= surveySettingsService.surveyDefinition_findAllCompletedInternal(user);
 			uiModel.addAttribute("surveyDefinitions", surveyDefinitions);
-			
 			return "statistics/statistics";
 		} catch (Exception e) {
 			log.error(e.getMessage(),e);
@@ -152,6 +156,7 @@ public class StatisticsController {
 	@RequestMapping(value="/list", produces = "text/html",method = RequestMethod.GET)
 	public String listSurveyEntries(@RequestParam(value = "sid", required = true) Long surveyDefinitionId,
 									@RequestParam(value = "qid", required = false) Long questionId,
+									@RequestParam(value = "shopId", required = false) String shopId,
 									Model uiModel,
 									Principal principal,
 									HttpServletRequest httpServletRequest) {
@@ -172,13 +177,16 @@ public class StatisticsController {
 			else{
 				question  = surveySettingsService.question_findById(questionId);
 			}
+			if (StringUtils.isNotEmpty(shopId)) {
+				populateModel(uiModel,surveyDefinitionId,question, user,shopId);
+			}else {
 				populateModel(uiModel,surveyDefinitionId,question, user);
+			}
+			
+			Set<String> ls = surveyService.survey_findgetShops();
+			uiModel.addAttribute("shops", ls);
+			
 			return "statistics/statistics";
-			
-			
-			
-			
-			
 		} catch (Exception e) {
 			log.error(e.getMessage(),e);
 			throw (new RuntimeException(e));

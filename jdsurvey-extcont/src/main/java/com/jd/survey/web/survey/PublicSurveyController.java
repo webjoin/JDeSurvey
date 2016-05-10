@@ -24,8 +24,10 @@ import java.io.UnsupportedEncodingException;
 import java.security.Principal;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 import java.util.Random;
 import java.util.Set;
 
@@ -34,6 +36,7 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import javax.validation.Valid;
 
+import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.velocity.VelocityContext;
@@ -58,6 +61,8 @@ import org.springframework.web.multipart.MultipartHttpServletRequest;
 import org.springframework.web.util.UriUtils;
 import org.springframework.web.util.WebUtils;
 
+import com.google.gson.Gson;
+import com.google.gson.JsonObject;
 import com.jd.survey.GlobalSettings;
 import com.jd.survey.domain.settings.QuestionOption;
 import com.jd.survey.domain.settings.SurveyDefinition;
@@ -71,6 +76,8 @@ import com.jd.survey.service.settings.ApplicationSettingsService;
 import com.jd.survey.service.settings.SurveySettingsService;
 import com.jd.survey.service.survey.SurveyService;
 import com.jd.survey.util.Des;
+import com.jd.survey.util.HttpRequest;
+import com.jd.survey.util.ReturnBody;
 import com.jd.survey.util.ServletUtils;
 
 
@@ -135,7 +142,10 @@ public class PublicSurveyController {
 	}
 	
 	
-	
+	public static void main(String[] args) {
+		String a = Des.Encrypt("3531|18516280051|20160508|1" , Des.hex2byte(strKey));
+		System.out.println(a);
+	}
 	/**
 	 * Checks that the user does not have a pending survey entry otherwise creates a new one     
 	 * @param surveyDefinitionId
@@ -154,6 +164,7 @@ public class PublicSurveyController {
 			Long shopid = null ;
 			String phone = "" ;
 			String ctxDate = "";
+			Integer isGiveFlow =null;
 			String shopidStr = ServletRequestUtils.getStringParameter(httpServletRequest, "shopid","");
 			try {
 				String shopidStr1 = Des.Decrypt(shopidStr, Des.hex2byte(strKey));
@@ -161,6 +172,7 @@ public class PublicSurveyController {
 				shopid = Long.valueOf(strs[0]);
 				phone = strs[1];
 				ctxDate = strs[2];
+				isGiveFlow = Integer.valueOf(strs[3]); //是否赠送流量  
 			} catch (Exception e) {
 				shopid = ServletRequestUtils.getLongParameter(httpServletRequest, "shopid",0L);
 			}
@@ -175,7 +187,7 @@ public class PublicSurveyController {
 				log.warn(SURVEY_NOT_PUBLIC_WARNING_MESSAGE + httpServletRequest.getPathInfo() + FROM_IP_WARNING_MESSAGE + httpServletRequest.getLocalAddr());
 				return "accessDenied";
 			}
-			Set<Survey> userSurveyEntries= surveyService.survey_findUserEntriesByTypeIdAndIpAddress(surveyDefinitionId,ServletUtils.getRemoteAddr(httpServletRequest),shopid,phone);
+			Set<Survey> userSurveyEntries= surveyService.survey_findUserEntriesByTypeIdAndIpAddress(surveyDefinitionId,ServletUtils.getRemoteAddr(httpServletRequest),shopid,phone,ctxDate);
 			if (surveyDefinition.getAllowMultipleSubmissions()) {//allow multiple submissions of this survey from the same client IP Address
 				if (userSurveyEntries == null || userSurveyEntries.size() == 0) {	//No User entries for this survey, create a new one
 					Survey survey =surveyService.survey_create(surveyDefinitionId,null,ServletUtils.getRemoteAddr(httpServletRequest),shopid,phone,ctxDate);
@@ -302,11 +314,11 @@ public class PublicSurveyController {
 				return "accessDenied";
 			}
 
-			if (!survey.getIpAddress().equalsIgnoreCase(ServletUtils.getRemoteAddr(httpServletRequest))) {
-				//Attempt to access a survey from different IP Address 
-				log.warn(UNAUTHORIZED_ATTEMPT_TO_ACCESS_SURVEY_WARNING_MESSAGE + httpServletRequest.getPathInfo() + FROM_IP_WARNING_MESSAGE + httpServletRequest.getLocalAddr());
-				return "accessDenied";
-			}
+//			if (!survey.getIpAddress().equalsIgnoreCase(ServletUtils.getRemoteAddr(httpServletRequest))) {
+//				//Attempt to access a survey from different IP Address 
+//				log.warn(UNAUTHORIZED_ATTEMPT_TO_ACCESS_SURVEY_WARNING_MESSAGE + httpServletRequest.getPathInfo() + FROM_IP_WARNING_MESSAGE + httpServletRequest.getLocalAddr());
+//				return "accessDenied";
+//			}
 			
 			List<SurveyPage> surveyPages = surveyService.surveyPage_getAll(surveyId,messageSource.getMessage(DATE_FORMAT, null, LocaleContextHolder.getLocale()));
 			uiModel.addAttribute("survey_base_path", "open");
@@ -341,10 +353,34 @@ public class PublicSurveyController {
 		log.info("submitPost(open): id= " + surveyId);
 		
 		try {
-			String shopid = ServletRequestUtils.getStringParameter(httpServletRequest, "shopid","");
+			Long shopid = null ;
+			String phone = "" ;
+			String ctxDate = "";
+			String flowCode = "" ;  //流量码
+			Integer isGiveFlow = null;
+			String shopidStr = ServletRequestUtils.getStringParameter(httpServletRequest, "shopid","");
+			try {
+				String shopidStr1 = Des.Decrypt(shopidStr, Des.hex2byte(strKey));
+				String[] strs = shopidStr1.split("\\|");
+				shopid = Long.valueOf(strs[0]);
+				phone = strs[1];
+				ctxDate = strs[2];
+				isGiveFlow = Integer.valueOf(strs[3]); //是否赠送流量  
+			} catch (Exception e) {
+				shopid = ServletRequestUtils.getLongParameter(httpServletRequest, "shopid",0L);
+			}
+			
+			if (shopid == null || shopid == 0) {
+				log.warn("shopid is null , so "+SURVEY_NOT_PUBLIC_WARNING_MESSAGE + httpServletRequest.getPathInfo() + FROM_IP_WARNING_MESSAGE + httpServletRequest.getLocalAddr());
+				return "accessDenied";
+			}
 			if(proceedAction!=null){ //submit button
 				uiModel.asMap().clear();
 				Survey survey = surveyService.survey_submit(surveyId);
+				if (survey == null ) { //  by Elijah
+					return "surveyAlreadyTaken";
+//					return "accessDenied";
+				}
 				SurveyDefinition surveyDefinition =surveySettingsService.surveyDefinition_findById(survey.getTypeId());
 				//survey definition not open to the public
 				if (!surveyDefinition.getIsPublic()) {
@@ -354,10 +390,10 @@ public class PublicSurveyController {
 				}
 				
 				//Attempt to access a survey from different IP Address
-				if (!survey.getIpAddress().equalsIgnoreCase(ServletUtils.getRemoteAddr(httpServletRequest))) {
-					log.warn(UNAUTHORIZED_ATTEMPT_TO_ACCESS_SURVEY_WARNING_MESSAGE + httpServletRequest.getPathInfo() + FROM_IP_WARNING_MESSAGE + httpServletRequest.getLocalAddr());
-					return "accessDenied";
-				}
+//				if (!survey.getIpAddress().equalsIgnoreCase(ServletUtils.getRemoteAddr(httpServletRequest))) {
+//					log.warn(UNAUTHORIZED_ATTEMPT_TO_ACCESS_SURVEY_WARNING_MESSAGE + httpServletRequest.getPathInfo() + FROM_IP_WARNING_MESSAGE + httpServletRequest.getLocalAddr());
+//					return "accessDenied";
+//				}
 				
 				if (surveyDefinition.getAllowMultipleSubmissions()) {
 					return "redirect:/open/" + encodeUrlPathSegment(survey.getTypeId().toString(), httpServletRequest) + "?list&shopid="+shopid;	
@@ -365,12 +401,36 @@ public class PublicSurveyController {
 				else
 				{
 					uiModel.asMap().clear();
+					// call a http to exchange flows . by Elijah
+					try {
+						if ( 1 == isGiveFlow) {
+							if (StringUtils.isNotEmpty(survey.getFlowCode())) {
+								String url = ServletUtils.Web.EX_FLOW_API;
+								url = "http://localhost:9091/BookingSmsBus/survey/exchange/{des_code}/{flowCode}/{flowid}/{surveyId}";
+								String des_code = shopidStr;
+								Long d_surveyId = surveyDefinition.getId();
+								url = url.replace("{des_code}", des_code);
+								url = url.replace("{flowCode}", survey.getFlowCode());
+								url = url.replace("{flowid}", survey.getFlow());
+								url = url.replace("{surveyId}", d_surveyId+"");
+								Map<String,String> map = new HashMap<String,String>();
+								String rs = HttpRequest.sendPUT(url, map);
+								ReturnBody jo = new Gson().fromJson(rs, ReturnBody.class);
+								int code = jo.getCode();
+								// 赠送流量成功
+								uiModel.addAttribute("code",code);
+								uiModel.addAttribute("flow",survey.getFlow() );
+								uiModel.addAttribute("fcode",survey.getFlowCode());
+							}
+						}
+					} catch (Exception e) {
+						log.error(e.getCause(), e);
+					}
 					StringWriter sw = new StringWriter();
 					VelocityContext velocityContext = new VelocityContext();
-					Velocity.evaluate(velocityContext, sw, "velocity-log" , 
-							 		  surveyDefinition.getCompletedSurveyTemplate());
+					Velocity.evaluate(velocityContext, sw, "velocity-log" ,surveyDefinition.getCompletedSurveyTemplate());
 					uiModel.addAttribute("completedMessage",sw.toString().trim());
-					uiModel.addAttribute("shopid",shopid);
+					uiModel.addAttribute("shopid",shopidStr);
 					return "surveys/submitted";
 				}
 			}
@@ -387,10 +447,10 @@ public class PublicSurveyController {
 				}
 				
 				//Attempt to access a survey from different IP Address
-				if (!survey.getIpAddress().equalsIgnoreCase(ServletUtils.getRemoteAddr(httpServletRequest))) {
-					log.warn(UNAUTHORIZED_ATTEMPT_TO_ACCESS_SURVEY_WARNING_MESSAGE + httpServletRequest.getPathInfo() + FROM_IP_WARNING_MESSAGE + httpServletRequest.getLocalAddr());
-					return "accessDenied";
-				}
+//				if (!survey.getIpAddress().equalsIgnoreCase(ServletUtils.getRemoteAddr(httpServletRequest))) {
+//					log.warn(UNAUTHORIZED_ATTEMPT_TO_ACCESS_SURVEY_WARNING_MESSAGE + httpServletRequest.getPathInfo() + FROM_IP_WARNING_MESSAGE + httpServletRequest.getLocalAddr());
+//					return "accessDenied";
+//				}
 				List<SurveyPage> surveyPages = surveyService.surveyPage_getAll(surveyId,messageSource.getMessage(DATE_FORMAT, null, LocaleContextHolder.getLocale()));
 				Short order  = (short) surveyPages.size();
 				return "redirect:/open/" + encodeUrlPathSegment(survey.getId().toString(), httpServletRequest) +"/" + encodeUrlPathSegment(order.toString(), httpServletRequest)+"?shopid="+shopid;
@@ -430,10 +490,10 @@ public class PublicSurveyController {
 			}
 			
 			//Attempt to access a survey from different IP Address
-			if (!survey.getIpAddress().equalsIgnoreCase(ServletUtils.getRemoteAddr(httpServletRequest))) {
-				log.warn(UNAUTHORIZED_ATTEMPT_TO_ACCESS_SURVEY_WARNING_MESSAGE + httpServletRequest.getPathInfo() + FROM_IP_WARNING_MESSAGE + httpServletRequest.getLocalAddr());
-				return "accessDenied";
-			}
+//			if (!survey.getIpAddress().equalsIgnoreCase(ServletUtils.getRemoteAddr(httpServletRequest))) {
+//				log.warn(UNAUTHORIZED_ATTEMPT_TO_ACCESS_SURVEY_WARNING_MESSAGE + httpServletRequest.getPathInfo() + FROM_IP_WARNING_MESSAGE + httpServletRequest.getLocalAddr());
+//				return "accessDenied";
+//			}
 			
 			List<SurveyPage> surveyPages = surveyService.surveyPage_getAll(surveyId,messageSource.getMessage(DATE_FORMAT, null, LocaleContextHolder.getLocale()));
 			if (survey.getStatus() == SurveyStatus.I) {
@@ -471,9 +531,41 @@ public class PublicSurveyController {
 						   		 HttpServletRequest httpServletRequest) {
 		log.info("editSurveyPage surveyId=" + surveyId + " pageOrder" + order);
 		try{
-			String shopid = ServletRequestUtils.getStringParameter(httpServletRequest, "shopid","");
+			String shopidStr1 = null ;
+			Long shopid = null ;
+			String phone = "" ;
+			String ctxDate = "";
+			String flowCode = "";
+			Integer isGiveFlow = null;
+			String shopidStr = ServletRequestUtils.getStringParameter(httpServletRequest, "shopid","");
+			try {
+				shopidStr1 = Des.Decrypt(shopidStr, Des.hex2byte(strKey));
+				String[] strs = shopidStr1.split("\\|");
+				shopid = Long.valueOf(strs[0]);
+				phone = strs[1];
+				ctxDate = strs[2];
+				isGiveFlow = Integer.valueOf(strs[3]); //是否赠送流量  
+			} catch (Exception e) {
+				shopid = ServletRequestUtils.getLongParameter(httpServletRequest, "shopid",0L);
+			}
+			
 			SurveyPage surveyPage  = surveyService.surveyPage_get(surveyId, order,messageSource.getMessage(DATE_FORMAT, null, LocaleContextHolder.getLocale()));
+			if (surveyPage.getSurvey() != null  && surveyPage.getSurvey().getStatus() == SurveyStatus.S) {
+				return "surveyAlreadyTaken";
+			}
 			SurveyDefinition surveyDefinition =surveySettingsService.surveyDefinition_findById(surveyPage.getSurvey().getTypeId());
+			
+			//survey definition not open to the public
+			if (!surveyDefinition.getIsPublic()) {
+				log.warn(SURVEY_NOT_PUBLIC_WARNING_MESSAGE + httpServletRequest.getPathInfo() + FROM_IP_WARNING_MESSAGE + httpServletRequest.getLocalAddr());
+				return "accessDenied";
+			}
+			
+			//Attempt to access a survey from different IP Address
+//			if (!surveyPage.getSurvey().getIpAddress().equalsIgnoreCase(ServletUtils.getRemoteAddr(httpServletRequest))) {
+//				log.warn(UNAUTHORIZED_ATTEMPT_TO_ACCESS_SURVEY_WARNING_MESSAGE + httpServletRequest.getPathInfo() + FROM_IP_WARNING_MESSAGE + httpServletRequest.getLocalAddr());
+//				return "accessDenied";
+//			}
 			
 			//randomize the questions order
 			if (surveyPage.getRandomizeQuestions()) { Collections.shuffle(surveyPage.getQuestionAnswers(), new Random(System.nanoTime()));}
@@ -485,19 +577,55 @@ public class PublicSurveyController {
 					Collections.shuffle(questionAnswer.getQuestion().getOptionsList(), new Random(System.nanoTime()));
 				}
 			}
-			
-			
-			
-			
-			//survey definition not open to the public
-			if (!surveyDefinition.getIsPublic()) {
-				log.warn(SURVEY_NOT_PUBLIC_WARNING_MESSAGE + httpServletRequest.getPathInfo() + FROM_IP_WARNING_MESSAGE + httpServletRequest.getLocalAddr());
-				return "accessDenied";
-			}
-			//Attempt to access a survey from different IP Address
-			if (!surveyPage.getSurvey().getIpAddress().equalsIgnoreCase(ServletUtils.getRemoteAddr(httpServletRequest))) {
-				log.warn(UNAUTHORIZED_ATTEMPT_TO_ACCESS_SURVEY_WARNING_MESSAGE + httpServletRequest.getPathInfo() + FROM_IP_WARNING_MESSAGE + httpServletRequest.getLocalAddr());
-				return "accessDenied";
+			Survey survey  = surveyPage.getSurvey();
+			String flow = "0" ;
+			try { // add by elijah on 5 May 2016   get a flow code
+				if (1 == isGiveFlow) {
+					String url = ServletUtils.Web.GET_FLOW_API;
+					url = "http://localhost:9091/BookingSmsBus/survey/code/{des_code}/{surveyid}/{fcode}";
+					Long d_surveyId = surveyDefinition.getId();
+					url = url.replace("{des_code}", shopidStr);
+					url = url.replace("{surveyid}", d_surveyId+"");
+					if (StringUtils.isNotEmpty(survey.getFlowCode())) {
+						url = url.replace("{fcode}", survey.getFlowCode()+"");
+					}else {
+						url = url.replace("{fcode}","0");
+					}
+					Map<String,String> map = new HashMap<String,String>();
+					String rs = HttpRequest.sendPUT(url, map);
+					ReturnBody jo = new Gson().fromJson(rs, ReturnBody.class);
+					int code = jo.getCode();
+					if (200 == code) {
+						// 赠送流量成功
+						flowCode = jo.getMessage(); //流量码
+						if (!"error".equals(flowCode)) {
+//						shopidStr = Des.Encrypt(shopidStr1+"|"+flowCode, Des.hex2byte(strKey));
+							flow = jo.getData().getFlowId();
+							if (StringUtils.isNotEmpty(flow)) {
+								String brand = ServletUtils.validateMobile(phone);
+								if ("1".equals(brand)) {  //中国移动  
+									flow = flow.split("\\|")[1];
+								}else if ("2".equals(brand)) {//中国联通  
+									flow = flow.split("\\|")[2];
+								}else if ("3".equals(brand)) {//中国电信  
+									flow = flow.split("\\|")[3];
+								}else {  //未知
+									flow = "0";
+								}
+								survey.setDesCode(shopidStr);
+								survey.setFlow(flow);
+								survey.setFlowCode(flowCode);
+								surveyService.survey_save(survey);
+							}else{
+								flow = "0";
+							}
+						}
+					}else if (1002 == code) {
+						// 
+					}
+				}
+			} catch (Exception e) {
+				log.error(e.getCause(), e);
 			}
 			
 			List<SurveyPage> surveyPages = surveyService.surveyPage_getAll(surveyId,messageSource.getMessage(DATE_FORMAT, null, LocaleContextHolder.getLocale()));
@@ -506,7 +634,8 @@ public class PublicSurveyController {
 			uiModel.addAttribute("surveyPage", surveyPage);
 			uiModel.addAttribute("surveyDefinition", surveySettingsService.surveyDefinition_findById(surveyPage.getSurvey().getTypeId()));
 			uiModel.addAttribute("surveyPages", surveyPages);
-			uiModel.addAttribute("shopid", shopid);
+			uiModel.addAttribute("shopid", shopidStr);
+			uiModel.addAttribute("flow", flow);
 			return "surveys/page";
 		} catch (Exception e) {
 			log.error(e.getMessage(),e);
@@ -543,10 +672,10 @@ public class PublicSurveyController {
 				return "accessDenied";
 			}
 			//Attempt to access a survey from different IP Address
-			if (!survey.getIpAddress().equalsIgnoreCase(ServletUtils.getRemoteAddr(httpServletRequest))) {
-				log.warn(UNAUTHORIZED_ATTEMPT_TO_ACCESS_SURVEY_WARNING_MESSAGE + httpServletRequest.getPathInfo() + FROM_IP_WARNING_MESSAGE + httpServletRequest.getLocalAddr());
-				return "accessDenied";
-			}
+//			if (!survey.getIpAddress().equalsIgnoreCase(ServletUtils.getRemoteAddr(httpServletRequest))) {
+//				log.warn(UNAUTHORIZED_ATTEMPT_TO_ACCESS_SURVEY_WARNING_MESSAGE + httpServletRequest.getPathInfo() + FROM_IP_WARNING_MESSAGE + httpServletRequest.getLocalAddr());
+//				return "accessDenied";
+//			}
 			
 			if(proceedAction!=null){ //next button
 				List<SurveyPage> surveyPages = surveyService.surveyPage_getAll(surveyPage.getSurvey().getId(),messageSource.getMessage(DATE_FORMAT, null, LocaleContextHolder.getLocale()));

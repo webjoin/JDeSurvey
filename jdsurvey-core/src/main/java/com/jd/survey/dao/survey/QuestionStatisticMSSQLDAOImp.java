@@ -19,6 +19,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
+
 import javax.sql.DataSource;
 
 import org.apache.commons.logging.Log;
@@ -61,7 +62,7 @@ public class QuestionStatisticMSSQLDAOImp  implements QuestionStatisticDAO{
 	 * Computes question answer statistics 
 	 */
 	@Override
-	public List<QuestionStatistic> getStatistics(Question question,Long totalRecordCount) {
+	public List<QuestionStatistic> getStatistics(Question question,Long totalRecordCount,String ... args) {
 		switch (question.getType())
 		{
 		case YES_NO_DROPDOWN:

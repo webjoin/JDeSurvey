@@ -24,7 +24,7 @@ import com.jd.survey.domain.survey.SurveyStatistic;
 /**
  */
 public interface SurveyStatisticDAO {
-	public SurveyStatistic get(Long surveyDefinitionId);
+	public SurveyStatistic get(Long surveyDefinitionId,String ... args);
 	public List<SurveyStatistic> getAll();
 	public List<SurveyStatistic> getAll(String login);
 }

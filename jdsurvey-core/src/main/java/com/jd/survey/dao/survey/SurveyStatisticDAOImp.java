@@ -20,6 +20,7 @@ import java.sql.SQLException;
 import java.util.List;
 
 import javax.sql.DataSource;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
@@ -42,16 +43,19 @@ public class SurveyStatisticDAOImp  implements SurveyStatisticDAO{
         this.jdbcTemplate = new JdbcTemplate(basicDataSource);
     }
 
-	public SurveyStatistic get(Long surveyDefinitionId) {
+	public SurveyStatistic get(Long surveyDefinitionId,String ... args) {
+		StringBuffer sb = new StringBuffer();
+		sb.append("select d.id as id, d.name as department_name, sd.name as survey_name, "); 
+		sb.append("(select count(*) from survey s where s.survey_definition_id = sd.id and s.status in ('I','R') "); if (args.length > 0) { sb.append(" and s.survey_shop_id = '").append(args[0]).append("'"); } sb.append(") as icompleted_count,");
+		sb.append("(select count(*) from survey s where s.survey_definition_id = sd.id and s.status = 'S' "); if (args.length > 0) { sb.append(" and s.survey_shop_id = '").append(args[0]).append("'"); } sb.append(" ) as submitted_count,");
+		sb.append("(select count(*) from survey s where s.survey_definition_id = sd.id and s.status = 'D' "); if (args.length > 0) { sb.append(" and s.survey_shop_id = '").append(args[0]).append("'"); } sb.append(") as deleted_count, ");
+		sb.append("(select count(*) from survey s where s.survey_definition_id = sd.id "); if (args.length > 0) { sb.append(" and s.survey_shop_id = '").append(args[0]).append("'"); } sb.append(" )  as total_count ");
+		sb.append("from  	survey_definition sd ");
+		sb.append("inner join department d on (sd.department_id = d.id) ");
+		sb.append("where sd.id = ?");
+		
 		SurveyStatistic surveyStatistic = this.jdbcTemplate.queryForObject(
-				"select d.id as id, d.name as department_name, sd.name as survey_name, " +
-						"(select count(*) from survey s where s.survey_definition_id = sd.id and s.status in ('I','R')) as icompleted_count," +  
-						"(select count(*) from survey s where s.survey_definition_id = sd.id and s.status = 'S') as submitted_count," +
-						"(select count(*) from survey s where s.survey_definition_id = sd.id and s.status = 'D') as deleted_count, " +
-						"(select count(*) from survey s where s.survey_definition_id = sd.id)  as total_count " +
-						"from  	survey_definition sd "+
-						"inner join department d on (sd.department_id = d.id) " +
-						"where sd.id = ?",
+				sb.toString(),
 						new Object[]{surveyDefinitionId},
 						new RowMapper<SurveyStatistic>() {
 					public SurveyStatistic mapRow(ResultSet rs, int rowNum) throws SQLException {

@@ -40,6 +40,7 @@ import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.servlet.ModelAndView;
 
+import com.google.gson.Gson;
 import com.jd.survey.domain.security.User;
 import com.jd.survey.domain.settings.DataSet;
 import com.jd.survey.domain.settings.QuestionType;

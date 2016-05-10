@@ -19,6 +19,8 @@ import java.util.Date;
 import java.util.List;
 import java.util.Set;
 import java.util.SortedSet;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -82,7 +84,7 @@ public class SurveyService {
 	 */
 	@Transactional(readOnly = false)
 	public Survey survey_create(Long surveyDefinitionId, String login,
-			String ipAddress, Long shopId) {
+			String ipAddress, Long shopId,String phone,String ctxDate) {
 		User user = null;
 		SurveyDefinition surveyDefinition = surveyDefinitionDAO.findById(surveyDefinitionId);
 		if (login != null && login.length() > 0) {
@@ -95,6 +97,8 @@ public class SurveyService {
 			survey = new Survey(surveyDefinition, ipAddress);
 		}
 		survey.setShopId(shopId);
+		survey.setPhone(phone);
+		survey.setCtxDate(ctxDate);
 		survey = surveyDAO.merge(survey);
 		surveyDAO.initialize(survey, surveyDefinition);
 		return survey;
@@ -125,12 +129,27 @@ public class SurveyService {
 	 * @param surveyId
 	 * @return
 	 */
+	private Lock lock = new ReentrantLock();
 	@Transactional(readOnly = false)
 	public Survey survey_submit(Long surveyId) {
-		Survey survey = surveyDAO.findById(surveyId);
-		survey.setStatus(SurveyStatus.S);
-		survey.setSubmissionDate(new Date());
-		survey.setLastUpdateDate(new Date());
+//		Survey survey = surveyDAO.findById(surveyId);
+		try {
+			lock.lock();
+			Survey survey = surveyDAO.findById(surveyId);  // by Elijah
+			if (survey == null || survey.getStatus() == SurveyStatus.S) {
+				return null;
+			}
+			survey.setStatus(SurveyStatus.S);
+			survey.setSubmissionDate(new Date());
+			survey.setLastUpdateDate(new Date());
+			return surveyDAO.merge(survey);
+		}finally{
+			lock.unlock();
+		}
+	}
+	
+	@Transactional(readOnly = false)
+	public Survey survey_save(Survey survey) {
 		return surveyDAO.merge(survey);
 	}
 		
@@ -390,6 +409,10 @@ public class SurveyService {
 	public Set<Survey> survey_findAllIncompleteByTypeId(Long surveyDefinitionId){
 		return surveyDAO.findAllIncompleteByTypeId(surveyDefinitionId);
 	}
+	
+	public Set<String> survey_findgetShops(){//Survey.getShops
+		return surveyDAO.findgetShops();
+	}
 
 	
 	
@@ -409,8 +432,8 @@ public class SurveyService {
 		return surveyDAO.findUserEntriesByTypeIdAndLogin(surveyDefinitionId,login);
 	}
 	
-	public Set<Survey> survey_findUserEntriesByTypeIdAndIpAddress(Long surveyDefinitionId,String ipAddress){
-		return surveyDAO.findUserEntriesByTypeIdAndIpAddress(surveyDefinitionId,ipAddress);
+	public Set<Survey> survey_findUserEntriesByTypeIdAndIpAddress(Long surveyDefinitionId,String ipAddress,Long shopId,String phone,String ctxDate){
+		return surveyDAO.findUserEntriesByTypeIdAndIpAddress(surveyDefinitionId,ipAddress,  shopId,phone,ctxDate);
 	}
 	
 	
@@ -444,14 +467,14 @@ public class SurveyService {
 	
 	
 	
-	public List<QuestionStatistic> questionStatistic_getStatistics(Question question, Long totalRecordCount) {
-		return questionStatisticDAO.getStatistics(question,totalRecordCount);
+	public List<QuestionStatistic> questionStatistic_getStatistics(Question question, Long totalRecordCount,String ... args) {
+		return questionStatisticDAO.getStatistics(question,totalRecordCount,args);
 	}
 	
 	
 	
-	public SurveyStatistic surveyStatistic_get(Long surveyDefinitionId) {
-		return surveyStatisticDAO.get(surveyDefinitionId);
+	public SurveyStatistic surveyStatistic_get(Long surveyDefinitionId,String ... args) {
+		return surveyStatisticDAO.get(surveyDefinitionId,args);
 	}
 	
 	

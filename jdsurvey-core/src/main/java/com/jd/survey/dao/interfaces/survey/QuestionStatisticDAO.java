@@ -26,5 +26,5 @@ import com.jd.survey.domain.survey.QuestionStatistic;
 /**
  */
 public interface QuestionStatisticDAO {
-	public List<QuestionStatistic> getStatistics(Question question, Long totalRecordCount);
+	public List<QuestionStatistic> getStatistics(Question question, Long totalRecordCount,String ... args);
 }

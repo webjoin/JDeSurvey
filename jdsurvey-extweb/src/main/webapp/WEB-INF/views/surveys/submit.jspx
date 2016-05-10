@@ -13,6 +13,10 @@
     <script type="text/javascript">	
 	 $(document).ready(function() {
  		$('label[id^="ratingStarLabel"]').hide("fast");
+ 		//console.log($(":submit[name='_submit']"));
+ 		//$(":submit[name='_submit']").get(0).submit();
+ 		//console.log($(":submit[name='_submit']").get(0));
+ 		 $(":submit[name='_submit']").click(); 
 		});	
 	</script>
 	
@@ -601,7 +605,9 @@
 				
 			<div class="block">	
 				<spring:url value="/${survey_base_path}/submit" var="form_url"/>
-				<form action="${form_url}" method="POST" class="formee">
+			-----------<c:out value="${param.shopid}"></c:out>------${form_url}?shopid=${param.shopid}
+				
+				<form action="${form_url}?shopid=${param.shopid}" method="POST" class="formee">
 					<input type="hidden" name="id"  value="${survey.id}" />
 					<div class="grid-6-12 extDivButtons">
 						<spring:message code="submit_button_label"  var="submit_button_label"/>
@@ -617,5 +623,4 @@
 	</div>
 		
 </div>
-
 

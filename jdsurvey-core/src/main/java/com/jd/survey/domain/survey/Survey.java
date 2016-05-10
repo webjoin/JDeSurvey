@@ -48,12 +48,13 @@ import com.jd.survey.domain.settings.SurveyDefinition;
 	@NamedQuery(name = "Survey.findAll", query = "select o from Survey o"),
 	@NamedQuery(name = "Survey.findById", query = "select o from Survey o where o.id = ?1"),
 	@NamedQuery(name = "Survey.getCount", query = "select count(o) from Survey o"),
+	@NamedQuery(name = "Survey.getShops", query = "select distinct o.shopId from Survey o"),
 	@NamedQuery(name = "Survey.findAllByTypeId", query = "select o from Survey o where o.typeId=?1 order by submissionDate desc, creationDate desc"),
 	@NamedQuery(name = "Survey.findAllIncompleteByTypeId", query = "select o from Survey o where o.typeId=?1 and (status='I' or status='R')  order by submissionDate desc, creationDate desc"),
 	@NamedQuery(name = "Survey.findAllSubmittedByTypeId", query = "select o from Survey o where o.typeId=?1 and status='S' order by submissionDate desc, creationDate desc"),
 	@NamedQuery(name = "Survey.findAllDeletedByTypeId", query = "select o from Survey o where o.typeId=?1 and status='D' order by submissionDate desc, creationDate desc"),
 	@NamedQuery(name = "Survey.findUserEntriesByTypeIdAndLogin", query = "select o from Survey o where o.typeId=?1 and o.login=?2 and status<>'D' order by submissionDate desc, creationDate desc"),
-	@NamedQuery(name = "Survey.findUserEntriesByTypeIdAndIpAddress", query = "select o from Survey o where o.typeId=?1 and o.ipAddress=?2 and status<>'D' order by submissionDate desc, creationDate desc")
+	@NamedQuery(name = "Survey.findUserEntriesByTypeIdAndIpAddress", query = "select o from Survey o where o.typeId=?1 and  shopId = ?2 and phone = ?3 and ctxDate= ?4 and status<>'D'  order by submissionDate desc, creationDate desc")
 	})
 public class Survey implements Serializable{
 	
@@ -79,6 +80,20 @@ public class Survey implements Serializable{
 	
 	@Column(name = "SURVEY_SHOP_ID")
 	Long shopId;
+	@Column(name = "SURVEY_PHONE")
+	String phone;
+	@Column(name = "CTX_DATE")
+	String ctxDate;
+	
+	
+	@Column(name = "FLOW")
+	String flow;
+	
+	@Column(name = "DES_CODE")
+	String desCode;
+	
+	@Column(name = "FLOW_CODE")
+	String flowCode;
 	
 
 	@Column(length = 100, nullable= true)
@@ -278,16 +293,46 @@ public class Survey implements Serializable{
 	}
 
 	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
+	public String getFlow() {
+		return flow;
+	}
+
+	public void setFlow(String flow) {
+		this.flow = flow;
+	}
+
+	public String getDesCode() {
+		return desCode;
+	}
+
+	public void setDesCode(String desCode) {
+		this.desCode = desCode;
+	}
+
+	public String getFlowCode() {
+		return flowCode;
+	}
+
+	public void setFlowCode(String flowCode) {
+		this.flowCode = flowCode;
+	}
+
+	public String getCtxDate() {
+		return ctxDate;
+	}
+
+	public void setCtxDate(String ctxDate) {
+		this.ctxDate = ctxDate;
+	}
+
+	public String getPhone() {
+		return phone;
+	}
+
+	public void setPhone(String phone) {
+		this.phone = phone;
+	}
+
 	public Long getShopId() {
 		return shopId;
 	}

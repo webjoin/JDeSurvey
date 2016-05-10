@@ -32,13 +32,15 @@ public interface SurveyDAO extends JpaDao<Survey> {
 	public Set<Survey> findAll() throws DataAccessException;
 	public Set<Survey> findAll(int startResult, int maxRows) throws DataAccessException;
 	public Survey findById(Long id) throws DataAccessException;
+	public Survey findDoneById(Long id) throws DataAccessException;
 	public Long getCount() throws DataAccessException;
 	public Set<Survey> findAllByTypeId(Long surveyDefinitionId) throws DataAccessException;
+	Set<String> findgetShops() throws DataAccessException;
 	public Set<Survey> findAllIncompleteByTypeId(Long surveyDefinitionId) throws DataAccessException;
 	public Set<Survey> findAllSubmittedByTypeId(Long surveyDefinitionId) throws DataAccessException;
 	public Set<Survey> findAllDeletedByTypeId(Long surveyDefinitionId) throws DataAccessException;
 	public Set<Survey> findUserEntriesByTypeIdAndLogin(Long surveyDefinitionId, String login) throws DataAccessException;
-	public Set<Survey> findUserEntriesByTypeIdAndIpAddress(Long surveyDefinitionId, String ipAddress) throws DataAccessException;
+	public Set<Survey> findUserEntriesByTypeIdAndIpAddress(Long surveyDefinitionId, String ipAddress,Long shopId,String phone,String ctxDate) throws DataAccessException;
 	
 	
 	public void publish(SurveyDefinition surveyDefinition);

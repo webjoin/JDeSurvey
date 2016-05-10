@@ -19,6 +19,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
+
 import javax.sql.DataSource;
 
 import org.apache.commons.logging.Log;
@@ -28,6 +29,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
+
 import com.jd.survey.dao.interfaces.survey.QuestionStatisticDAO;
 import com.jd.survey.domain.settings.Question;
 import com.jd.survey.domain.settings.QuestionColumnLabel;
@@ -55,7 +57,7 @@ public class QuestionStatisticDAOImp  implements QuestionStatisticDAO{
 	 * Computes question answer statistics 
 	 */
 	@Override
-	public List<QuestionStatistic> getStatistics(Question question,Long totalRecordCount) {
+	public List<QuestionStatistic> getStatistics(Question question,Long totalRecordCount,String ... args) {
 		switch (question.getType())
 		{
 		case YES_NO_DROPDOWN:
@@ -81,7 +83,7 @@ public class QuestionStatisticDAOImp  implements QuestionStatisticDAO{
 		case DATASET_DROP_DOWN:
 			return getFrequencyStatistics(question,totalRecordCount);	
 		case  SINGLE_CHOICE_RADIO_BUTTONS:
-			return getFrequencyStatistics(question,totalRecordCount);
+			return getFrequencyStatistics(question,totalRecordCount,args);
 			
 		
 		
@@ -125,7 +127,7 @@ public class QuestionStatisticDAOImp  implements QuestionStatisticDAO{
 	 * @param question
 	 * @return
 	 */
-	private List<QuestionStatistic>  getFrequencyStatistics(Question question,final Long totalRecordCount) {
+	private List<QuestionStatistic>  getFrequencyStatistics(Question question,final Long totalRecordCount,String ... args) {
 		Long surveyDefinitionId =question.getPage().getSurveyDefinition().getId();
 		Short pageOrder =question.getPage().getOrder();
 		Short questionOrder =question.getOrder();
@@ -134,6 +136,9 @@ public class QuestionStatisticDAOImp  implements QuestionStatisticDAO{
 		StringBuilder stringBuilder  = new StringBuilder();
 		stringBuilder.append("select d." + columnName + " as col, count(*) as total "); 
 		stringBuilder.append(" from survey_data_" + surveyDefinitionId + " d inner join survey s on (s.id=d.survey_id and s.status='S')" );
+		if (args.length > 0) {
+			stringBuilder.append(" where s.survey_shop_id =").append(args[0]); 
+		}
 		stringBuilder.append(" group by d." + columnName);
 		String selectSQLStatement =stringBuilder.toString();
 		
