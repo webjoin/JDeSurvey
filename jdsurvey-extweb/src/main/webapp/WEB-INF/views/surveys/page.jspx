@@ -73,12 +73,14 @@
 			<div id="instructions">
 				<span  class="grid-12-12 alignTop">
 					<c:out value="${surveyPage.instructions}"/>
-					<c:if test="${ '0' != flow}">
-						<font color='red'>感谢您在本店用餐，为了给您提供更好的服务，请认真填写以下问卷。为表感谢，完成本问卷将有流量包赠送。期待您的再次光临！</font>
-					</c:if>
-					<c:if test="${ '0' == flow}">
-						<font color='red'>感谢您在本店用餐，为了给您提供更好的服务，请认真填写以下问卷，期待您的再次光临！</font>
-					</c:if>
+					<c:choose>
+						<c:when test="${ not empty flow and '' eq flow }">
+							<font color='red'>感谢您在本店用餐，为了给您提供更好的服务，请认真填写以下问卷。为表感谢，完成本问卷将有流量包赠送。期待您的再次光临！</font>
+						</c:when>
+						<c:otherwise >
+							<font color='red'>感谢您在本店用餐，为了给您提供更好的服务，请认真填写以下问卷，期待您的再次光临！</font>
+						</c:otherwise>
+					</c:choose>
 				</span>
 			</div>
 				<!-- Labels for Inputs and IDs so they are ADA Compliant  -->

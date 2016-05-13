@@ -1056,6 +1056,9 @@ public class NowwebmanagerController {
 				jsonBean.addProperty("surveyLink", surveyLink+"&shopid="+shopid);
 				ls.add(jsonBean);
 			}
+//			{
+//				[{}]	
+//			}
 			String rs = ls.toString();
 			return  rs;
 		} catch (Exception e) {

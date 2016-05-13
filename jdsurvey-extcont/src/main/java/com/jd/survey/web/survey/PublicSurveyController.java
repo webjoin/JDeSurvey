@@ -19,6 +19,7 @@ package com.jd.survey.web.survey;
 
 
 
+import java.io.IOException;
 import java.io.StringWriter;
 import java.io.UnsupportedEncodingException;
 import java.security.Principal;
@@ -30,6 +31,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Random;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
 
 import javax.servlet.ServletOutputStream;
 import javax.servlet.http.HttpServletRequest;
@@ -142,9 +144,27 @@ public class PublicSurveyController {
 	}
 	
 	
-	public static void main(String[] args) {
-		String a = Des.Encrypt("3531|18516280051|20160508|1" , Des.hex2byte(strKey));
+	public static void main(String[] args) throws InterruptedException, IOException {
+		Object o = new Object();
+		synchronized (o) {
+//			o.wait();
+//			HttpRequest.sendPost("http://localhost:8080/admin/aaa", null);
+//			TimeUnit.SECONDS.sleep(20);
+//			System.in.read();
+		}
+		String a = Des.Encrypt("38581|13262615712|20160509|1" , Des.hex2byte(strKey));
 		System.out.println(a);
+		Thread t = new Thread(new Runnable() {
+			@Override
+			public void run() {
+				System.out.println("running...");
+			}
+		});
+		System.out.println(t.getState());
+		t.start();
+		TimeUnit.SECONDS.sleep(2);
+		System.out.println(t.getState());
+		t.start();
 	}
 	/**
 	 * Checks that the user does not have a pending survey entry otherwise creates a new one     
@@ -172,9 +192,14 @@ public class PublicSurveyController {
 				shopid = Long.valueOf(strs[0]);
 				phone = strs[1];
 				ctxDate = strs[2];
-				isGiveFlow = Integer.valueOf(strs[3]); //是否赠送流量  
+				if (strs.length == 4) {
+					isGiveFlow = Integer.valueOf(strs[3]); //是否赠送流量  
+				}else {
+					isGiveFlow = 0;
+				}
 			} catch (Exception e) {
 				shopid = ServletRequestUtils.getLongParameter(httpServletRequest, "shopid",0L);
+				isGiveFlow = 0;
 			}
 			
 			if (shopid == null || shopid == 0) {
@@ -365,9 +390,14 @@ public class PublicSurveyController {
 				shopid = Long.valueOf(strs[0]);
 				phone = strs[1];
 				ctxDate = strs[2];
-				isGiveFlow = Integer.valueOf(strs[3]); //是否赠送流量  
+				if (strs.length == 4)
+					isGiveFlow = Integer.valueOf(strs[3]); //是否赠送流量
+				else {
+					isGiveFlow = 0;
+				}
 			} catch (Exception e) {
 				shopid = ServletRequestUtils.getLongParameter(httpServletRequest, "shopid",0L);
+				isGiveFlow = 0;
 			}
 			
 			if (shopid == null || shopid == 0) {
@@ -406,7 +436,7 @@ public class PublicSurveyController {
 						if ( 1 == isGiveFlow) {
 							if (StringUtils.isNotEmpty(survey.getFlowCode())) {
 								String url = ServletUtils.Web.EX_FLOW_API;
-								url = "http://localhost:9091/BookingSmsBus/survey/exchange/{des_code}/{flowCode}/{flowid}/{surveyId}";
+//								url = "http://localhost:9091/BookingSmsBus/survey/exchange/{des_code}/{flowCode}/{flowid}/{surveyId}";
 								String des_code = shopidStr;
 								Long d_surveyId = surveyDefinition.getId();
 								url = url.replace("{des_code}", des_code);
@@ -544,9 +574,14 @@ public class PublicSurveyController {
 				shopid = Long.valueOf(strs[0]);
 				phone = strs[1];
 				ctxDate = strs[2];
-				isGiveFlow = Integer.valueOf(strs[3]); //是否赠送流量  
+				if (strs.length == 4) 
+					isGiveFlow = Integer.valueOf(strs[3]); //是否赠送流量
+				else {
+					isGiveFlow = 0;
+				}
 			} catch (Exception e) {
 				shopid = ServletRequestUtils.getLongParameter(httpServletRequest, "shopid",0L);
+				isGiveFlow = 0;
 			}
 			
 			SurveyPage surveyPage  = surveyService.surveyPage_get(surveyId, order,messageSource.getMessage(DATE_FORMAT, null, LocaleContextHolder.getLocale()));
@@ -578,11 +613,14 @@ public class PublicSurveyController {
 				}
 			}
 			Survey survey  = surveyPage.getSurvey();
+			if (!phone.equals(survey.getPhone())) {
+				return "accessDenied";
+			}
 			String flow = "0" ;
 			try { // add by elijah on 5 May 2016   get a flow code
 				if (1 == isGiveFlow) {
 					String url = ServletUtils.Web.GET_FLOW_API;
-					url = "http://localhost:9091/BookingSmsBus/survey/code/{des_code}/{surveyid}/{fcode}";
+//					url = "http://localhost:9091/BookingSmsBus/survey/code/{des_code}/{surveyid}/{fcode}";
 					Long d_surveyId = surveyDefinition.getId();
 					url = url.replace("{des_code}", shopidStr);
 					url = url.replace("{surveyid}", d_surveyId+"");
