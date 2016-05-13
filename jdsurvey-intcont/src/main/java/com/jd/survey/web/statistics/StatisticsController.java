@@ -21,6 +21,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.SortedSet;
 import java.util.TreeMap;
 
 import javax.servlet.http.HttpServletRequest;
@@ -51,8 +52,12 @@ import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.servlet.ModelAndView;
 
+import com.google.gson.JsonArray;
+import com.google.gson.JsonObject;
 import com.jd.survey.domain.security.User;
 import com.jd.survey.domain.settings.Question;
+import com.jd.survey.domain.settings.QuestionOption;
+import com.jd.survey.domain.settings.QuestionRowLabel;
 import com.jd.survey.domain.settings.SurveyDefinition;
 import com.jd.survey.domain.settings.SurveyDefinitionPage;
 import com.jd.survey.domain.survey.QuestionStatistic;
@@ -112,7 +117,35 @@ public class StatisticsController {
 			uiModel.addAttribute("surveyDefinitions", surveyDefinitions);
 			uiModel.addAttribute("surveyStatistic", surveyStatistic);
 			uiModel.addAttribute("recordCount", recordCount);
-			uiModel.addAttribute("questionStatistics" ,surveyService.questionStatistic_getStatistics(question,recordCount,args));
+			List<QuestionStatistic> lq = surveyService.questionStatistic_getStatistics(question,recordCount,args);
+			uiModel.addAttribute("questionStatistics" ,lq);
+			
+			JsonObject jsonObject = new JsonObject();
+			jsonObject.addProperty("questionText", question.getQuestionText());
+			jsonObject.addProperty("order", question.getOrder());
+			jsonObject.addProperty("visible", question.getVisible());
+			jsonObject.addProperty("required", question.getRequired());
+			jsonObject.addProperty("code", question.getType().getCode());
+			jsonObject.add("options", new JsonArray());
+			if ("SR".equals(question.getType().getCode()) || "MC".equals(question.getType().getCode())) {
+				SortedSet<QuestionOption> options = question.getOptions();
+				for (QuestionOption row : options) {
+					JsonObject optionJsonOject = new JsonObject();
+					jsonObject.getAsJsonArray("options").add(optionJsonOject);
+					optionJsonOject.addProperty("text", row.getText());
+					optionJsonOject.addProperty("value", row.getValue());
+					optionJsonOject.addProperty("order", row.getOrder());
+					for (QuestionStatistic qs : lq) {
+						if (qs.getEntry().equals(row.getValue())) {
+							optionJsonOject.addProperty("frequency", qs.getFrequency());
+							break;
+						}else {
+							optionJsonOject.addProperty("frequency", 0);
+						}
+					}
+				}
+			}
+			System.out.println(jsonObject.toString());
 		} catch (Exception e) {
 			log.error(e.getMessage(),e);
 			throw (new RuntimeException(e));

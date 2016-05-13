@@ -15,19 +15,24 @@
   */
 package com.jd.survey.web.surveys;
 
+import java.io.IOException;
 import java.security.Principal;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.SortedSet;
 
 import javax.servlet.ServletOutputStream;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
+import org.apache.commons.beanutils.BeanUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.hibernate.Hibernate;
+import org.hibernate.proxy.HibernateProxy;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.MessageSource;
 import org.springframework.context.i18n.LocaleContextHolder;
@@ -41,12 +46,19 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.servlet.ModelAndView;
 
 import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+import com.google.gson.JsonArray;
+import com.google.gson.JsonObject;
+import com.google.gson.TypeAdapter;
+import com.google.gson.TypeAdapterFactory;
+import com.google.gson.reflect.TypeToken;
+import com.google.gson.stream.JsonReader;
+import com.google.gson.stream.JsonWriter;
 import com.jd.survey.domain.security.User;
-import com.jd.survey.domain.settings.DataSet;
-import com.jd.survey.domain.settings.QuestionType;
+import com.jd.survey.domain.settings.Question;
+import com.jd.survey.domain.settings.QuestionOption;
 import com.jd.survey.domain.settings.SurveyDefinition;
 import com.jd.survey.domain.survey.QuestionAnswer;
-import com.jd.survey.domain.survey.Survey;
 import com.jd.survey.domain.survey.SurveyDocument;
 import com.jd.survey.domain.survey.SurveyEntry;
 import com.jd.survey.domain.survey.SurveyPage;
@@ -171,6 +183,45 @@ public class SurveyController {
 			List<SurveyPage> surveyPages = surveyService.surveyPage_getAll(surveyId,messageSource.getMessage(DATE_FORMAT, null, LocaleContextHolder.getLocale()));
 			uiModel.addAttribute("surveyEntry", surveyEntry);
 			uiModel.addAttribute("surveyPages", surveyPages);
+			JsonArray pageArray = new JsonArray();
+			for (SurveyPage page : surveyPages) {
+				JsonObject pageJsonObject = new JsonObject();
+				pageArray.add(pageJsonObject);
+				
+				pageJsonObject.addProperty("title",page.getTitle());
+				pageJsonObject.addProperty("instructions",page.getInstructions());
+				pageJsonObject.addProperty("order",page.getOrder());
+				
+				pageJsonObject.add("questions", new JsonArray());	
+				List<QuestionAnswer> questionAnswers = page.getQuestionAnswers();
+				for (QuestionAnswer qa : questionAnswers) {
+//					qa.get
+					JsonObject questionJsonObj = new JsonObject();
+					Question q = qa.getQuestion();
+					questionJsonObj.addProperty("code", q.getType().getCode()); //问题类型
+					questionJsonObj.addProperty("questionText", q.getQuestionText()); //问题类型
+					questionJsonObj.addProperty("questionOrder", q.getOrder()); //问题类型
+					questionJsonObj.addProperty("direction", q.getDirection()+""); //问题类型
+					questionJsonObj.addProperty("visible", q.getVisible()+""); //问题类型
+					questionJsonObj.addProperty("required", q.getRequired()+""); //问题类型
+					questionJsonObj.addProperty("value", qa.getStringAnswerValue());
+					questionJsonObj.add("options", new JsonArray());  ////值
+					pageJsonObject.getAsJsonArray("questions").add(questionJsonObj);  //添加到 page上
+					if ("ST".equals(q.getType().getCode())) { //文本框
+					}else if("SR".equals(q.getType().getCode()) || "MC".equals(q.getType().getCode() )) { //单选框
+						SortedSet<QuestionOption> set = q.getOptions();
+						for (QuestionOption option : set) {
+							JsonObject optionJsonObj = new JsonObject();
+							optionJsonObj.addProperty("text", option.getText());
+							optionJsonObj.addProperty("value", option.getValue());
+							optionJsonObj.addProperty("order", option.getOrder());
+							questionJsonObj.getAsJsonArray("options").add(optionJsonObj);
+						}
+					}
+					
+				}
+			}
+			System.out.println(pageArray.toString());
 			return "surveys/survey";
 			
 			
@@ -179,9 +230,6 @@ public class SurveyController {
 			throw (new RuntimeException(e));
 		}
 	}	
-	
-	
-	
 	
 	/**
 	 * export the single Survey to a PDF 
